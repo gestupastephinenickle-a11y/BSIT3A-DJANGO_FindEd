@@ -1,0 +1,15 @@
+<header class="navbar navbar-expand-md d-print-none">
+  <div class="container-xl">
+    <a href="{% url 'dashboard' %}" class="navbar-brand d-flex align-items-center gap-2">
+      <span class="dh-brand-mark"><i class="fa-solid fa-map-location-dot"></i></span>
+      <span class="lh-1">
+        <span class="dh-brand-name" style="color:var(--tblr-body-color)">FindEd <span class="text-warning">KCC</span></span>
+        <span class="dh-brand-sub" style="color:var(--tblr-muted)">Classroom Finder</span>
+      </span>
+    </a>
+    <div class="ms-auto d-flex gap-2">
+      <a href="{% url 'login' %}" class="btn btn-outline-primary">Log in</a>
+      <a href="{% url 'register' %}" class="btn btn-primary">Register</a>
+    </div>
+  </div>
+</header>

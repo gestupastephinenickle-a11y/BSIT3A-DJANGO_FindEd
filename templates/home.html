@@ -1,26 +1,325 @@
 {% extends "theme/base.html" %}
 {% block content %}
-<div class="container-xl">
-  <div class="page-header d-print-none" aria-label="Page header">
-    <div class="container-xl">
-      <div class="row align-items-center">
-        <div class="col">
-          <div class="page-pretitle">Overview</div>
-          <div class="d-flex align-items-center gap-3 flex-wrap d-none d-md-flex">
-            <h2 class="page-title mb-0">Dashboard</h2>
-          </div>
-          <h2 class="page-title mb-0 d-md-none">Dashboard</h2>
+{{ buildings|json_script:"campus-data" }}
+<style>
+  .finded-header { display:flex; flex-wrap:wrap; gap:.75rem; align-items:end; justify-content:space-between; }
+  .drone-wrap { position:relative; border-radius:14px; overflow:hidden; border:1px solid var(--tblr-border-color);
+    box-shadow: var(--tblr-shadow-card); background:#5c8a42; }
+  .drone-wrap svg { display:block; width:100%; height:auto; }
+  .bldg { cursor:pointer; }
+  .bldg .roof { transition: filter .15s ease, stroke .15s ease; stroke:#2b2f3a; stroke-width:2; }
+  .bldg:hover .roof { filter:brightness(1.12); }
+  .bldg.active .roof { stroke:#f8b84e; stroke-width:4; filter:brightness(1.1) drop-shadow(0 6px 10px rgba(0,0,0,.45)); }
+  .bldg text { pointer-events:none; font-family:Inter,system-ui,sans-serif; }
+  .map-badge { position:absolute; top:12px; left:12px; background:rgba(10,14,28,.78); color:#fff;
+    padding:.4rem .7rem; border-radius:999px; font-size:.72rem; font-weight:700; letter-spacing:.08em; }
+  .map-compass { position:absolute; top:12px; right:12px; background:rgba(255,255,255,.92); border-radius:12px;
+    padding:.4rem .6rem; font-weight:800; font-size:.8rem; }
+  #route-line { fill:none; stroke:#2563eb; stroke-width:6; stroke-linecap:round; stroke-linejoin:round;
+    stroke-dasharray:14 10; animation: march 1s linear infinite; filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+  @keyframes march { to { stroke-dashoffset:-24; } }
+  .pulse { transform-origin:center; transform-box:fill-box; animation: pulse 1.6s ease-out infinite; }
+  @keyframes pulse { 0%{opacity:.9; transform:scale(.4);} 100%{opacity:0; transform:scale(2.2);} }
+  .room-row { display:flex; justify-content:space-between; gap:.5rem; padding:.55rem .75rem; border-bottom:1px solid var(--tblr-border-color); cursor:pointer; }
+  .room-row:last-child { border-bottom:0; }
+  .room-row:hover, .room-row.selected { background:rgba(var(--tblr-primary-rgb),.08); }
+  .room-row.selected { border-left:4px solid #f8b84e; background:#fff7e0; }
+  .legend-dot { width:.8rem; height:.8rem; border-radius:.25rem; display:inline-block; }
+  #search-results { position:absolute; z-index:20; top:100%; left:0; right:0; background:var(--tblr-bg-surface);
+    border:1px solid var(--tblr-border-color); border-radius:0 0 12px 12px; max-height:280px; overflow:auto;
+    box-shadow:var(--tblr-shadow-card); }
+  #search-results button { display:block; width:100%; text-align:left; border:0; background:none; padding:.6rem .8rem; }
+  #search-results button:hover { background:rgba(var(--tblr-primary-rgb),.08); }
+  .step-num { width:1.7rem; height:1.7rem; border-radius:50%; background:var(--tblr-primary); color:#fff;
+    display:inline-flex; align-items:center; justify-content:center; font-weight:800; flex-shrink:0; }
+</style>
+
+<div class="finded-header mb-3">
+  <div>
+    <div class="page-pretitle">FindEd • Kabankalan Catholic College</div>
+    <h2 class="page-title mb-1">Where is my classroom?</h2>
+    <div class="text-muted">Type your room below — the map will guide you from the Main Gate.</div>
+  </div>
+  <span class="badge bg-green-lt text-green">No login needed • Guide mode</span>
+</div>
+
+<!-- SEARCH -->
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="position-relative">
+      <div class="input-group input-group-lg">
+        <span class="input-group-text"><i class="fas fa-magnifying-glass"></i></span>
+        <input id="room-search" type="text" class="form-control" placeholder="Find classroom… try BSIT 3-A, STEM 11-A, BEED 1-A…" autocomplete="off">
+        <button class="btn btn-outline-secondary" id="clear-search" type="button">Clear</button>
+      </div>
+      <div id="search-results" class="d-none"></div>
+    </div>
+    <div class="mt-2 d-flex flex-wrap gap-2 small">
+      <span class="text-muted">Popular:</span>
+      <button class="btn btn-sm btn-outline-primary" data-room="BSIT 3-A">BSIT 3-A</button>
+      <button class="btn btn-sm btn-outline-primary" data-room="BSIT 1-A">BSIT 1-A</button>
+      <button class="btn btn-sm btn-outline-primary" data-room="STEM 11-A">STEM 11-A</button>
+      <button class="btn btn-sm btn-outline-primary" data-room="BEED 1-A">BEED 1-A</button>
+      <button class="btn btn-sm btn-outline-primary" data-room="Main Sanctuary">Chapel</button>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-body p-2 p-md-3">
+        <div class="drone-wrap">
+          <div class="map-badge">● DRONE VIEW • KCC CAMPUS • TOP-DOWN</div>
+          <div class="map-compass">N ▲</div>
+          <svg viewBox="0 0 1000 640" role="img" aria-label="KCC drone map">
+            <defs>
+              <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="4" dy="6" stdDeviation="6" flood-opacity="0.35"/>
+              </filter>
+              <pattern id="grass" width="40" height="40" patternUnits="userSpaceOnUse">
+                <rect width="40" height="40" fill="#6f9e4f"/>
+                <circle cx="8" cy="12" r="1.6" fill="#7fb35e" opacity=".7"/>
+                <circle cx="28" cy="30" r="1.4" fill="#5d8a40" opacity=".7"/>
+              </pattern>
+            </defs>
+            <rect x="0" y="0" width="1000" height="640" fill="url(#grass)"/>
+            <g opacity=".18">
+              <rect x="0" y="60" width="1000" height="60" fill="#ffffff"/>
+              <rect x="0" y="180" width="1000" height="60" fill="#ffffff"/>
+              <rect x="0" y="300" width="1000" height="60" fill="#ffffff"/>
+              <rect x="0" y="420" width="1000" height="60" fill="#ffffff"/>
+              <rect x="0" y="540" width="1000" height="60" fill="#ffffff"/>
+            </g>
+            <rect x="22" y="66" width="956" height="552" rx="10" fill="none" stroke="#e8dcc0" stroke-width="6" opacity=".9"/>
+            <rect x="0" y="0" width="1000" height="58" fill="#363c46"/>
+            <line x1="0" y1="29" x2="1000" y2="29" stroke="#f5f0dc" stroke-width="2" stroke-dasharray="18 14" opacity=".9"/>
+            <text x="20" y="22" fill="#fff" font-size="15" font-weight="800" letter-spacing="2">GUANZON ST.</text>
+            <text x="20" y="42" fill="#c9cede" font-size="11">Brgy. 1 • Kabankalan City • KCC Main Gate ↓</text>
+            <g>
+              <rect x="700" y="8" width="52" height="20" rx="5" fill="#e8eaf4" stroke="#222"/>
+              <rect x="770" y="32" width="56" height="20" rx="5" fill="#f8b84e" stroke="#222"/>
+              <rect x="130" y="30" width="50" height="20" rx="5" fill="#7c82f5" stroke="#222"/>
+            </g>
+            <rect x="484" y="58" width="32" height="510" fill="#e8dcc0"/>
+            <rect x="60" y="312" width="880" height="26" fill="#e8dcc0"/>
+            <rect x="155" y="110" width="16" height="430" fill="#e8dcc0" opacity=".9"/>
+            <rect x="845" y="110" width="16" height="430" fill="#e8dcc0" opacity=".9"/>
+            <rect x="360" y="360" width="280" height="130" rx="12" fill="#86b364" stroke="#e8dcc0" stroke-width="4"/>
+            <ellipse cx="500" cy="425" rx="70" ry="34" fill="#a4cf82" opacity=".8"/>
+            <line x1="500" y1="395" x2="500" y2="445" stroke="#8a6d3b" stroke-width="5"/>
+            <rect x="488" y="378" width="24" height="16" fill="#1e40af"/>
+            <rect x="488" y="378" width="24" height="5" fill="#ef4444"/>
+            <text x="500" y="478" text-anchor="middle" font-size="12" font-weight="800" fill="#2f4a1e" letter-spacing="2">QUAD</text>
+            <g>
+              <rect x="624" y="92" width="112" height="70" rx="6" fill="#4b5260" stroke="#e8dcc0" stroke-width="3"/>
+              <g fill="#dfe3ee" opacity=".9">
+                <rect x="632" y="100" width="22" height="40" rx="2"/><rect x="658" y="100" width="22" height="40" rx="2"/>
+                <rect x="684" y="100" width="22" height="40" rx="2"/><rect x="710" y="100" width="22" height="40" rx="2"/>
+              </g>
+              <text x="680" y="156" text-anchor="middle" font-size="10" fill="#fff" font-weight="700">PARKING</text>
+            </g>
+
+            <!-- BUILDINGS -->
+            <g class="bldg" data-id="main">
+              <rect x="404" y="104" width="192" height="86" rx="4" fill="#000" opacity=".25"/>
+              <rect class="roof" x="400" y="98" width="192" height="86" rx="4" fill="#6b7a90" filter="url(#soft)"/>
+              <text x="496" y="152" text-anchor="middle" font-size="20" font-weight="900" fill="#fff">MAIN</text>
+              <text x="496" y="170" text-anchor="middle" font-size="10" font-weight="700" fill="#e8eaf4">ADMIN • 3F</text>
+            </g>
+            <g class="bldg" data-id="library">
+              <rect x="274" y="116" width="106" height="74" rx="4" fill="#000" opacity=".22"/>
+              <rect class="roof" x="270" y="110" width="106" height="74" rx="4" fill="#9a8a5f" filter="url(#soft)"/>
+              <text x="323" y="145" text-anchor="middle" font-size="13" font-weight="900" fill="#fff">LIBRARY</text>
+              <text x="323" y="161" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">2F</text>
+            </g>
+            <g class="bldg" data-id="basiced">
+              <rect x="74" y="116" width="162" height="184" rx="4" fill="#000" opacity=".25"/>
+              <rect class="roof" x="70" y="110" width="162" height="184" rx="4" fill="#b5654a" filter="url(#soft)"/>
+              <text x="151" y="195" text-anchor="middle" font-size="17" font-weight="900" fill="#fff">BASIC ED</text>
+              <text x="151" y="213" text-anchor="middle" font-size="11" font-weight="700" fill="#ffe8dc">GRADES • 3F</text>
+            </g>
+            <g class="bldg" data-id="shs">
+              <rect x="74" y="346" width="162" height="148" rx="4" fill="#000" opacity=".25"/>
+              <rect class="roof" x="70" y="340" width="162" height="148" rx="4" fill="#4a8a8a" filter="url(#soft)"/>
+              <text x="151" y="412" text-anchor="middle" font-size="22" font-weight="900" fill="#fff">SHS</text>
+              <text x="151" y="430" text-anchor="middle" font-size="11" font-weight="700" fill="#d6f0f0">11–12 • 3F</text>
+            </g>
+            <g class="bldg" data-id="coed">
+              <rect x="764" y="116" width="162" height="184" rx="4" fill="#000" opacity=".25"/>
+              <rect class="roof" x="760" y="110" width="162" height="184" rx="4" fill="#c07a3a" filter="url(#soft)"/>
+              <text x="841" y="195" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">COED·CAS</text>
+              <text x="841" y="213" text-anchor="middle" font-size="11" font-weight="700" fill="#ffedd6">EDUC • 3F</text>
+            </g>
+            <g class="bldg" data-id="cbaccj">
+              <rect x="764" y="346" width="162" height="184" rx="6" fill="#000" opacity=".3"/>
+              <rect class="roof" x="760" y="340" width="162" height="184" rx="6" fill="#5a6a9a" filter="url(#soft)" style="stroke:#f8b84e;stroke-width:4"/>
+              <rect x="772" y="352" width="46" height="22" rx="3" fill="#f8b84e"/>
+              <text x="795" y="367" text-anchor="middle" font-size="10" font-weight="900" fill="#222">BSIT ★</text>
+              <text x="841" y="435" text-anchor="middle" font-size="16" font-weight="900" fill="#fff">CBA·CCJ</text>
+              <text x="841" y="453" text-anchor="middle" font-size="11" font-weight="700" fill="#ffe9a8">BSIT HOME • 4F</text>
+            </g>
+            <g class="bldg" data-id="chapel">
+              <rect x="274" y="506" width="126" height="80" rx="40" fill="#000" opacity=".2"/>
+              <rect class="roof" x="270" y="500" width="126" height="80" rx="20" fill="#ece7da" filter="url(#soft)"/>
+              <line x1="333" y1="512" x2="333" y2="532" stroke="#8a6d3b" stroke-width="4"/>
+              <line x1="325" y1="518" x2="341" y2="518" stroke="#8a6d3b" stroke-width="4"/>
+              <text x="333" y="556" text-anchor="middle" font-size="13" font-weight="900" fill="#5a4a2a">CHAPEL</text>
+            </g>
+            <g class="bldg" data-id="gym">
+              <rect x="624" y="506" width="242" height="80" rx="6" fill="#000" opacity=".22"/>
+              <rect class="roof" x="620" y="500" width="242" height="80" rx="6" fill="#b9c1cf" filter="url(#soft)"/>
+              <text x="741" y="545" text-anchor="middle" font-size="14" font-weight="900" fill="#334155">GYM</text>
+            </g>
+            <g class="bldg" data-id="canteen">
+              <rect x="639" y="386" width="91" height="51" rx="4" fill="#000" opacity=".22"/>
+              <rect class="roof" x="635" y="380" width="91" height="51" rx="4" fill="#7a9a5a" filter="url(#soft)"/>
+              <text x="680" y="408" text-anchor="middle" font-size="11" font-weight="900" fill="#fff">CANTEEN</text>
+            </g>
+
+            <!-- ROUTE + MARKERS (on top) -->
+            <path id="route-line" d="" />
+            <g id="you-marker">
+              <circle cx="500" cy="72" r="10" fill="#2563eb" stroke="#fff" stroke-width="3"/>
+              <circle cx="500" cy="72" r="10" fill="none" stroke="#2563eb" stroke-width="3" class="pulse"/>
+              <text x="500" y="52" text-anchor="middle" font-size="11" font-weight="900" fill="#fff"
+                stroke="#000" stroke-width="3" paint-order="stroke">YOU: MAIN GATE</text>
+            </g>
+            <g id="target-marker" visibility="hidden">
+              <circle id="target-pulse" r="14" fill="none" stroke="#f8b84e" stroke-width="4" class="pulse"/>
+              <circle id="target-dot" r="9" fill="#f8b84e" stroke="#fff" stroke-width="3"/>
+            </g>
+
+            <g>
+              <rect x="452" y="48" width="96" height="0" fill="none"/>
+            </g>
+            <g opacity=".95">
+              <g><ellipse cx="320" cy="250" rx="16" ry="8" fill="#000" opacity=".2"/><circle cx="320" cy="242" r="16" fill="#2f6b2f"/></g>
+              <g><ellipse cx="680" cy="250" rx="16" ry="8" fill="#000" opacity=".2"/><circle cx="680" cy="242" r="16" fill="#2f6b2f"/></g>
+              <g><ellipse cx="320" cy="470" rx="16" ry="8" fill="#000" opacity=".2"/><circle cx="320" cy="462" r="16" fill="#2f6b2f"/></g>
+            </g>
+          </svg>
+        </div>
+        <div class="d-flex flex-wrap gap-3 mt-2 small text-muted px-1">
+          <span><span class="legend-dot" style="background:#2563eb"></span> Blue line = walk from Main Gate</span>
+          <span><span class="legend-dot" style="background:#f8b84e"></span> Gold = your classroom</span>
         </div>
       </div>
     </div>
   </div>
-  <br>
 
-  <div class="card">
-    <div class="card-body text-muted">
-      Dashboard
+  <div class="col-12 col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h3 class="card-title" id="guide-title">Guide</h3>
+        <div class="text-muted small" id="guide-sub">Search above or tap a rooftop</div>
+      </div>
+      <div class="card-body">
+        <div id="guide-empty" class="text-muted">Try <b>BSIT 3-A</b> — I'll show you exactly where to go.</div>
+        <div id="guide-detail" class="d-none">
+          <div class="alert alert-warning py-2"><b id="room-name"></b><div class="small" id="room-meta"></div></div>
+          <div class="d-flex flex-column gap-2" id="steps"></div>
+          <h4 class="mt-3 mb-1">All rooms here <span class="text-muted fw-normal" id="room-count"></span></h4>
+          <div class="border rounded" id="room-list"></div>
+        </div>
+      </div>
+      <div class="card-footer text-muted small">FindEd • KCC • Guanzon St. • Starter data — send real room numbers to update.</div>
     </div>
   </div>
-
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  const buildings = JSON.parse(document.getElementById('campus-data').textContent);
+  const byId = Object.fromEntries(buildings.map(b=>[b.id,b]));
+  const entrances = { main:[496,190], library:[323,190], basiced:[238,205], shs:[238,414],
+    coed:[754,205], cbaccj:[754,432], chapel:[333,494], gym:[741,494], canteen:[629,405] };
+  const walk = { main:"20m straight", library:"40m left", basiced:"1 min left", shs:"2 min left",
+    coed:"1 min right", cbaccj:"2 min right", chapel:"2 min south", gym:"3 min south-east", canteen:"1 min to quad" };
+  const floorTip = { "G/F":"Stay on the ground floor — no stairs.",
+    "2F":"Take the stairs to the 2nd floor.",
+    "3F":"Go up to the 3rd floor.", "4F":"Go up to the 4th floor (top)." };
+  const allRooms = [];
+  buildings.forEach(b=>b.rooms.forEach(r=>allRooms.push({...r, bldg:b.id, bldgName:b.name})));
+
+  const route = document.getElementById('route-line');
+  const tMark = document.getElementById('target-marker');
+  const tDot = document.getElementById('target-dot');
+  const tPulse = document.getElementById('target-pulse');
+  const search = document.getElementById('room-search');
+  const results = document.getElementById('search-results');
+
+  function drawRoute(bid){
+    const [ex,ey] = entrances[bid] || [500,325];
+    let d;
+    if(ey < 325){ d = `M 500 78 L 500 ${ey} L ${ex} ${ey}`; }
+    else { d = `M 500 78 L 500 325 L ${ex} 325 L ${ex} ${ey}`; }
+    route.setAttribute('d', d);
+    tMark.setAttribute('visibility','visible');
+    tDot.setAttribute('cx',ex); tDot.setAttribute('cy',ey);
+    tPulse.setAttribute('cx',ex); tPulse.setAttribute('cy',ey);
+  }
+
+  let curB=null, curRoom=null;
+  function stepsFor(b, r){
+    return [
+      "Enter via <b>Main Gate</b> on Guanzon St. (blue YOU dot).",
+      `Walk <b>${walk[b.id]||"follow the path"}</b> to <b>${b.name}</b> — follow the blue line.`,
+      `<b>${r.floor}</b>: ${floorTip[r.floor]||"Go inside."}`,
+      `Find <b>${r.code}</b> — ${r.detail||""}`
+    ];
+  }
+  function render(bid, roomCode){
+    const b = byId[bid]; if(!b) return;
+    curB=b; curRoom = b.rooms.find(r=>r.code===roomCode) || b.rooms[0];
+    document.querySelectorAll('.bldg').forEach(el=>el.classList.toggle('active', el.dataset.id===bid));
+    drawRoute(bid);
+    document.getElementById('guide-empty').classList.add('d-none');
+    document.getElementById('guide-detail').classList.remove('d-none');
+    document.getElementById('guide-title').textContent = b.name;
+    document.getElementById('guide-sub').textContent = `${b.floors} floor(s) • ${b.rooms.length} rooms`;
+    document.getElementById('room-name').textContent = "📍 " + curRoom.code;
+    document.getElementById('room-meta').textContent = `${b.name} • ${curRoom.floor} • ${curRoom.detail||""}`;
+    document.getElementById('steps').innerHTML = stepsFor(b,curRoom).map((s,i)=>
+      `<div class="d-flex gap-2 align-items-start"><span class="step-num">${i+1}</span><div>${s}</div></div>`).join('');
+    const list=document.getElementById('room-list'); list.innerHTML='';
+    document.getElementById('room-count').textContent=`(${b.rooms.length})`;
+    b.rooms.forEach(r=>{
+      const d=document.createElement('div');
+      d.className='room-row'+(r.code===curRoom.code?' selected':'');
+      d.innerHTML=`<div><div class="fw-bold">${r.code}</div><div class="text-muted small">${r.detail||""}</div></div><span class="badge bg-primary-lt text-primary" style="height:fit-content">${r.floor}</span>`;
+      d.onclick=()=>render(bid, r.code);
+      list.appendChild(d);
+    });
+  }
+
+  // search
+  function doSearch(){
+    const q=search.value.trim().toLowerCase();
+    if(!q){ results.classList.add('d-none'); return; }
+    const hits=allRooms.filter(r=>(r.code+" "+r.bldgName).toLowerCase().includes(q)).slice(0,8);
+    if(!hits.length){ results.innerHTML='<div class="p-2 text-muted">No match. Try BSIT, STEM, BEED…</div>'; results.classList.remove('d-none'); return; }
+    results.innerHTML='';
+    hits.forEach(h=>{
+      const btn=document.createElement('button');
+      btn.innerHTML=`<b>${h.code}</b> <span class="text-muted">• ${h.bldgName} • ${h.floor}</span>`;
+      btn.onclick=()=>{ search.value=h.code; results.classList.add('d-none'); render(h.bldg, h.code); };
+      results.appendChild(btn);
+    });
+    results.classList.remove('d-none');
+  }
+  search.addEventListener('input', doSearch);
+  document.getElementById('clear-search').onclick=()=>{ search.value=''; results.classList.add('d-none'); search.focus(); };
+  document.querySelectorAll('[data-room]').forEach(b=>b.onclick=()=>{
+    const hit=allRooms.find(r=>r.code===b.dataset.room);
+    if(hit){ search.value=hit.code; render(hit.bldg, hit.code); }
+  });
+  document.querySelectorAll('.bldg').forEach(el=>el.addEventListener('click', ()=>render(el.dataset.id)));
+  document.addEventListener('click', e=>{ if(!e.target.closest('.position-relative')) results.classList.add('d-none'); });
+
+  render('cbaccj','BSIT 3-A');
+})();
+</script>
 {% endblock %}
