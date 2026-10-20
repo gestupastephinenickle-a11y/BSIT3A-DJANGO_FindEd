@@ -2,6 +2,7 @@
 {% load static %}
 {% block content %}
 {{ buildings|json_script:"campus-data" }}
+{{ subjects|json_script:"subject-data" }}
 <style>
   .finded-header { display:flex; flex-wrap:wrap; gap:.75rem; align-items:end; justify-content:space-between; }
   .photo-wrap { position:relative; border-radius:14px; overflow:hidden; border:1px solid var(--tblr-border-color);
@@ -40,6 +41,15 @@
   #search-results button:hover { background:rgba(var(--tblr-primary-rgb),.08); }
   .step-num { width:1.7rem; height:1.7rem; border-radius:50%; background:var(--tblr-primary); color:#fff;
     display:inline-flex; align-items:center; justify-content:center; font-weight:800; flex-shrink:0; }
+  .subject-pin { position:absolute; z-index:6; transform:translate(-50%,0); }
+  .subject-pin button { border:1.5px solid #fff; background:#ea580c; color:#fff; font-size:9.5px; font-weight:800;
+    border-radius:999px; padding:2px 6px; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,.45); line-height:1.2; }
+  .subject-pin button:hover, .subject-pin button.sel { background:#f8b84e; color:#111; }
+  .subject-chip { display:flex; align-items:center; gap:.4rem; background:var(--tblr-bg-surface); color:var(--tblr-body-color);
+    border:1px solid var(--tblr-border-color); border-radius:999px; padding:.3rem .7rem; font-size:.82rem; }
+  .subject-chip:hover, .subject-chip.sel { border-color:#ea580c; background:rgba(234,88,12,.08); }
+  .subject-chip b { color:#ea580c; }
+  .subject-chip span { color:var(--tblr-muted); }
 </style>
 
 <div class="finded-header mb-3">
@@ -48,7 +58,10 @@
     <h2 class="page-title mb-1">Where is my classroom?</h2>
     <div class="text-muted">Real aerial photo of KCC, Guanzon St. — type your room and follow the blue route from the Main Gate.</div>
   </div>
-  <span class="badge bg-green-lt text-green">No login needed • Guide mode</span>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <a href="{% url 'ride' %}" class="btn btn-warning"><i class="fas fa-walking me-1"></i> Walk Mode</a>
+    <span class="badge bg-green-lt text-green">No login needed • Guide mode</span>
+  </div>
 </div>
 
 <!-- SEARCH -->
@@ -70,6 +83,17 @@
       <button class="btn btn-sm btn-outline-primary" data-room="Grade 4-A">Grade 4-A</button>
       <button class="btn btn-sm btn-outline-primary" data-room="Main Sanctuary">Chapel</button>
     </div>
+  </div>
+</div>
+
+<!-- SUBJECTS ON THE MAP -->
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+      <h3 class="card-title mb-0"><i class="fas fa-walking me-1" style="color:#ea580c"></i> Subjects on the KCC map</h3>
+      <span class="text-muted small">Tap a subject to show your room</span>
+    </div>
+    <div class="d-flex flex-wrap gap-2" id="subject-chips"></div>
   </div>
 </div>
 
@@ -119,6 +143,7 @@
 <script>
 (function(){
   const buildings = JSON.parse(document.getElementById('campus-data').textContent);
+  const subjects = JSON.parse(document.getElementById('subject-data').textContent);
   const byId = Object.fromEntries(buildings.map(b=>[b.id,b]));
   // Real KCC anchor (OpenStreetMap): Guanzon St., Brgy. 1, Kabankalan City.
   // Photo = 3x3 satellite tiles @z19, top-left tile (441005, 247508).
@@ -174,6 +199,52 @@
   });
   youPin();
 
+  // ---- every subject on the map ----
+  const subjectOffsets = [[-108,16],[-72,38],[-36,16],[0,38],[36,16],[72,38],[108,16]];
+  const subjectPinEls = {};
+  subjects.forEach((s, i) => {
+    const pin = pins[s.building];
+    if(!pin) return;
+    const [x,y] = toXY(pin.ll[0], pin.ll[1]);
+    const off = subjectOffsets[i % subjectOffsets.length];
+    const d = document.createElement('div');
+    d.className = 'subject-pin';
+    d.style.left = (x/S*100)+'%';
+    d.style.top = (y/S*100)+'%';
+    d.style.marginLeft = off[0]+'px';
+    d.style.marginTop = off[1]+'px';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = s.code;
+    btn.title = s.title + ' • ' + s.room;
+    btn.onclick = () => selectSubject(s.code);
+    d.appendChild(btn);
+    pinLayer.appendChild(d);
+    subjectPinEls[s.code] = btn;
+  });
+
+  const chipWrap = document.getElementById('subject-chips');
+  subjects.forEach(s => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'subject-chip';
+    chip.dataset.subject = s.code;
+    chip.innerHTML = `<b>${s.code}</b><span>${s.room}</span>`;
+    chip.title = s.title;
+    chip.onclick = () => selectSubject(s.code);
+    chipWrap.appendChild(chip);
+  });
+
+  function selectSubject(code){
+    const s = subjects.find(x => x.code === code);
+    if(!s || !pins[s.building]) return;
+    const b = byId[s.building];
+    const room = b.rooms.find(r => r.code === s.room) ? s.room : b.rooms[0].code;
+    render(s.building, room);
+    document.querySelectorAll('.subject-chip').forEach(c => c.classList.toggle('sel', c.dataset.subject === code));
+    Object.keys(subjectPinEls).forEach(k => subjectPinEls[k].classList.toggle('sel', k === code));
+  }
+
   function drawRoute(bid){
     const [gx,gy] = toXY(GATE[0], GATE[1]);
     const [dx,dy] = toXY(pins[bid].ll[0], pins[bid].ll[1]);
@@ -196,6 +267,8 @@
   }
   function render(bid, roomCode){
     const b = byId[bid]; if(!b || !pins[bid]) return;
+    document.querySelectorAll('.subject-chip.sel').forEach(c=>c.classList.remove('sel'));
+    Object.values(subjectPinEls).forEach(p=>p.classList.remove('sel'));
     curRoom = b.rooms.find(r=>r.code===roomCode) || b.rooms[0];
     Object.keys(pinEls).forEach(id=>pinEls[id].classList.toggle('sel', id===bid));
     drawRoute(bid);

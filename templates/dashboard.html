@@ -1,0 +1,98 @@
+{% extends "theme/base.html" %}
+{% block content %}
+<style>
+  .page-body { background: #0b0b0d !important; }
+  .dash-wrap { color: #f5f4f0; max-width: 960px; margin: 0 auto; }
+  .dash-wrap .text-muted { color: #b8b3a8 !important; }
+  .hero { background: linear-gradient(135deg, #000 0%, #1c1410 55%, #ff7a00 170%); border: 1px solid #ff7a00; border-radius: 20px; padding: 2.5rem 1.5rem; text-align: center; box-shadow: 0 8px 32px rgba(255,122,0,.15); }
+  .hero h1 { color: #fff; font-weight: 800; font-size: clamp(1.8rem, 5vw, 2.6rem); margin-bottom: .25rem; }
+  .hero p { color: #d6cfc2; margin-bottom: 1.25rem; }
+  .hero .form-control { background: #0b0b0d; border: 2px solid #3a332c; color: #fff; height: 60px; font-size: 1.1rem; border-radius: 14px 0 0 14px; }
+  .hero .form-control:focus { border-color: #ff7a00; box-shadow: none; }
+  .hero .btn-find { background: #ff7a00; color: #000; font-weight: 800; border-radius: 0 14px 14px 0; padding: 0 2rem; }
+  .chip { border: 1px solid #ff7a00; color: #ff9c3f; border-radius: 999px; padding: .25rem .9rem; font-size: .85rem; text-decoration: none; }
+  .chip:hover { background: #ff7a00; color: #000; }
+  .dash-wrap .card { background: #141416; border: 1px solid #2a2520; color: #f5f4f0; border-radius: 16px; }
+  .tile { background: #0b0b0d; border: 1px solid #3a332c; border-radius: 12px; padding: .9rem 1rem; height: 100%; }
+  .tile .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #ff9c3f; font-weight: 700; }
+  .tile .val { font-size: 1.05rem; font-weight: 800; color: #fff; }
+  .day-pill { border-radius: 999px; }
+  .dash-wrap .btn-primary { background: #ff7a00; border-color: #ff7a00; color: #000; font-weight: 800; }
+  .dash-wrap .btn-outline-primary { border-color: #ff7a00; color: #ff9c3f; }
+  .dash-wrap .btn-outline-primary:hover { background: #ff7a00; color: #000; }
+  .dash-wrap .table { color: #f5f4f0; }
+  .dash-wrap .table thead { color: #ff9c3f; font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }
+  .dash-wrap .table-hover tbody tr:hover { background: rgba(255,122,0,.07); }
+  .room-link { background: #ff7a00; color: #000; font-weight: 800; border-radius: 8px; padding: .2rem .6rem; text-decoration: none; font-size: .85rem; }
+  .walk-link { border: 1px solid #ff7a00; color: #ff9c3f; border-radius: 8px; padding: .2rem .6rem; text-decoration: none; font-size: .85rem; }
+  .walk-link:hover { background: #ff7a00; color: #000; }
+</style>
+<div class="dash-wrap">
+
+  <!-- HERO SEARCH -->
+  <div class="hero mb-3">
+    <div class="small fw-bold mb-1" style="color:#ff9c3f;letter-spacing:.12em">FINDED • KCC</div>
+    <h1>Where is my classroom?</h1>
+    <p>Type a room (IT 2-101, LAB 6) or subject (IT302).</p>
+    <form method="get" action="{% url 'dashboard' %}" role="search">
+      <div class="input-group mx-auto" style="max-width:640px">
+        <input name="q" type="text" class="form-control" placeholder="Try IT 2-101…" value="{{ q }}" autocomplete="off" aria-label="Search room or subject">
+        <button class="btn btn-find" type="submit">Find</button>
+      </div>
+    </form>
+    <div class="mt-3 d-flex flex-wrap gap-2 justify-content-center">
+      <a class="chip" href="{% url 'dashboard' %}?q=IT+2-101">IT 2-101</a>
+      <a class="chip" href="{% url 'dashboard' %}?q=LAB+6">LAB 6</a>
+      <a class="chip" href="{% url 'dashboard' %}?q=IT302">IT302</a>
+      <a class="chip" href="{% url 'dashboard' %}?q=CMAT+104">CMAT 104</a>
+    </div>
+    <a href="{% url 'ride' %}" class="btn btn-primary mt-3"><i class="fas fa-walking me-1"></i> Walk to my classroom</a>
+  </div>
+
+  {% if result %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <h3 class="mb-1">📍 {{ result.code }}</h3>
+      <div class="row g-2 mt-2">
+        <div class="col-6 col-md-3"><div class="tile"><div class="lbl">Building</div><div class="val">{{ result.building }}</div></div></div>
+        <div class="col-6 col-md-3"><div class="tile"><div class="lbl">Floor</div><div class="val">{{ result.floor }}</div></div></div>
+        <div class="col-6 col-md-3"><div class="tile"><div class="lbl">Room</div><div class="val">{{ result.room }}</div></div></div>
+        <div class="col-6 col-md-3"><div class="tile"><div class="lbl">Nearby</div><div class="val">{{ result.nearby }}</div></div></div>
+      </div>
+    </div>
+  </div>
+  {% elif not_found %}
+  <div class="card mb-3"><div class="card-body">No match for "<b>{{ q }}</b>". Try <b>IT 2-101</b>, <b>LAB 6</b>, or <b>IT302</b>. <a href="{% url 'dashboard' %}">Clear</a></div></div>
+  {% endif %}
+
+  <!-- SCHEDULE -->
+  <div class="card">
+    <div class="card-body">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <h3 class="mb-0">Subjects <span class="text-muted fw-normal small">{{ schedule|length }} classes{% if day %} • {{ day }}{% endif %}</span></h3>
+      </div>
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <a class="day-pill btn btn-sm {% if not day %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{% url 'dashboard' %}{% if q %}?q={{ q|urlencode }}{% endif %}">All</a>
+        {% for d in days %}
+        <a class="day-pill btn btn-sm {% if day == d %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{% url 'dashboard' %}?day={{ d }}{% if q %}&q={{ q|urlencode }}{% endif %}">{{ d|slice:":3" }}</a>
+        {% endfor %}
+      </div>
+      <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+        <thead><tr><th>Day</th><th>Time</th><th>Subject</th><th>Room</th><th></th></tr></thead>
+        <tbody>
+        {% for s in schedule %}
+          <tr>
+            <td class="text-muted">{{ s.day|slice:":3" }}</td>
+            <td class="text-nowrap">{{ s.time }}</td>
+            <td><b>{{ s.code }}</b> <span class="text-muted small">{{ s.title }}</span></td>
+            <td><a class="room-link" href="{% url 'dashboard' %}?q={{ s.room|urlencode }}">{{ s.room }}</a></td>
+            <td class="text-end"><a class="walk-link" href="{% url 'ride' %}?subject={{ s.code|urlencode }}" title="Walk to {{ s.room }}"><i class="fas fa-walking"></i> Walk</a></td>
+          </tr>
+        {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">No classes. <a href="{% url 'dashboard' %}">Clear</a></td></tr>{% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
