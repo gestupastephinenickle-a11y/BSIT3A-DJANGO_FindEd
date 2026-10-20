@@ -1,5 +1,4 @@
 from datetime import timedelta
-import re
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, get_user_model, login, logout
@@ -139,14 +138,15 @@ def logout_view(request):
     return redirect('login')
 
 
-# Public guide data — no login needed so new students can find rooms.
-# Starter campus data for Kabankalan Catholic College (KCC)
-# Guanzon St., Brgy. 1, Kabankalan City. Edit freely — later move to DB.
-# Real KCC layout (from school history + student guides):
-# College = 2 storeys | HS = 3 storeys, chapel in front | Elementary = 2
-# storeys beside canteen | St. Columban Arts Center + annex (canteen G/F,
-# library upper) | Gym. Room lists are starters — correct me anytime.
-CAMPUS_BUILDINGS = [
+def home(request):
+    # Public guide — no login needed so new students can find rooms.
+    # Starter campus data for Kabankalan Catholic College (KCC)
+    # Guanzon St., Brgy. 1, Kabankalan City. Edit freely — later move to DB.
+    # Real KCC layout (from school history + student guides):
+    # College = 2 storeys | HS = 3 storeys, chapel in front | Elementary = 2
+    # storeys beside canteen | St. Columban Arts Center + annex (canteen G/F,
+    # library upper) | Gym. Room lists are starters — correct me anytime.
+    buildings = [
         {
             "id": "main",
             "name": "Admin Building",
@@ -178,12 +178,6 @@ CAMPUS_BUILDINGS = [
                 {"code": "BSA 2-A", "floor": "2F", "detail": "Accountancy"},
                 {"code": "BS Psych 2-A", "floor": "2F", "detail": "Psychology"},
                 {"code": "BSED 3-A", "floor": "2F", "detail": "Teacher Education"},
-                {"code": "LAB 1", "floor": "2F", "detail": "Computer laboratory"},
-                {"code": "LAB 4", "floor": "2F", "detail": "Computer laboratory"},
-                {"code": "LAB 6", "floor": "2F", "detail": "Computer laboratory • Networking"},
-                {"code": "LAB 7", "floor": "2F", "detail": "Computer laboratory • Database"},
-                {"code": "CMAT 104", "floor": "G/F", "detail": "Lecture room • Quantitative Methods"},
-                {"code": "CMAT 303", "floor": "3F", "detail": "Lecture room • Theology"},
             ],
         },
         {
@@ -292,50 +286,8 @@ CAMPUS_BUILDINGS = [
                 {"code": "PE Room", "floor": "G/F", "detail": "Equipment"},
             ],
         },
-]
-
-# Real KCC anchor (OpenStreetMap): Guanzon St., Brgy. 1, Kabankalan City.
-KCC_GATE = [9.997965, 122.814818]
-
-CAMPUS_PINS = {
-    'main': [9.997740, 122.814635],
-    'college': [9.997605, 122.814315],
-    'arts': [9.997650, 122.814910],
-    'hs': [9.997605, 122.815321],
-    'annex': [9.997380, 122.814910],
-    'chapel': [9.997335, 122.815321],
-    'elem': [9.997065, 122.814315],
-    'gym': [9.997020, 122.815276],
-}
-
-# Starter campus drive paths (lat, lng) from the Main Gate to each building.
-CAMPUS_PATHS = {
-    'main': [KCC_GATE, [9.997850, 122.814800], [9.997850, 122.814700], [9.997740, 122.814635]],
-    'college': [KCC_GATE, [9.997850, 122.814800], [9.997850, 122.814450], [9.997700, 122.814380], [9.997605, 122.814315]],
-    'arts': [KCC_GATE, [9.997850, 122.814818], [9.997850, 122.814900], [9.997720, 122.814910], [9.997650, 122.814910]],
-    'hs': [KCC_GATE, [9.997850, 122.814818], [9.997850, 122.815250], [9.997700, 122.815300], [9.997605, 122.815321]],
-    'annex': [KCC_GATE, [9.997850, 122.814818], [9.997850, 122.814900], [9.997550, 122.814910], [9.997380, 122.814910]],
-    'chapel': [KCC_GATE, [9.997850, 122.814818], [9.997850, 122.815250], [9.997450, 122.815300], [9.997335, 122.815321]],
-    'elem': [KCC_GATE, [9.997850, 122.814800], [9.997850, 122.814450], [9.997300, 122.814380], [9.997065, 122.814315]],
-    'gym': [KCC_GATE, [9.997850, 122.814818], [9.997850, 122.815180], [9.997300, 122.815240], [9.997020, 122.815276]],
-}
-
-
-def home(request):
-    return render(request, 'home.html', {'buildings': CAMPUS_BUILDINGS, 'subjects': SUBJECTS})
-
-
-def ride_view(request):
-    """First-person motorcycle ride map with real-time GPS + live routing."""
-    context = {
-        'buildings': CAMPUS_BUILDINGS,
-        'pins': CAMPUS_PINS,
-        'paths': CAMPUS_PATHS,
-        'gate': KCC_GATE,
-        'subjects': SUBJECTS,
-        'selected_subject': request.GET.get('subject', '').strip(),
-    }
-    return render(request, 'ride.html', context)
+    ]
+    return render(request, 'home.html', {'buildings': buildings})
 
 
 @require_http_methods(['GET', 'POST'])
@@ -368,215 +320,3 @@ def register_view(request):
     )
     login(request, user)
     return redirect('dashboard')
-
-
-# --- Classroom Finder lookup (matches assignment spec) ---
-# Spec: student enters e.g. "IT 2-101" and system displays
-# Building / Floor / Room / Nearby.
-BUILDING_LOOKUP = {
-    'IT': {
-        'building': 'Information Technology Building',
-        'nearby': 'Staircase / Laboratory / Office',
-        'desc': 'College Department — BSIT rooms and computer labs.',
-    },
-    'BSIT': {
-        'building': 'Information Technology Building',
-        'nearby': 'Staircase / Laboratory / Office',
-        'desc': 'College Department — BSIT rooms and computer labs.',
-    },
-    'BSA': {
-        'building': 'Accountancy Building',
-        'nearby': 'Staircase / Registrar / Canteen',
-        'desc': 'College Department — Accountancy rooms.',
-    },
-    'BSBA': {
-        'building': 'Business Administration Building',
-        'nearby': 'Staircase / Library / Canteen',
-        'desc': 'College Department — Business Admin rooms.',
-    },
-    'BEED': {
-        'building': 'Teacher Education Building',
-        'nearby': 'Staircase / Library / Guidance',
-        'desc': 'College Department — Education rooms.',
-    },
-    'BSED': {
-        'building': 'Teacher Education Building',
-        'nearby': 'Staircase / Library / Guidance',
-        'desc': 'College Department — Education rooms.',
-    },
-    'BSCRIM': {
-        'building': 'Criminology Building',
-        'nearby': 'Staircase / Gym / Office',
-        'desc': 'College Department — Criminology rooms.',
-    },
-    'HS': {
-        'building': 'High School Department',
-        'nearby': 'Chapel / Staircase / Canteen',
-        'desc': '3-storey building with the Chapel in front.',
-    },
-    'ELEM': {
-        'building': 'Elementary Department',
-        'nearby': 'Canteen / Staircase / Playground',
-        'desc': '2-storey building beside the school canteen.',
-    },
-    'LAB': {
-        'building': 'Information Technology Building',
-        'nearby': 'Staircase / Laboratory / Office',
-        'desc': 'College computer laboratories.',
-    },
-    'CMAT': {
-        'building': 'CMAT Building',
-        'nearby': 'Staircase / Canteen / Office',
-        'desc': 'Lecture rooms — CMAT wing.',
-    },
-}
-
-# BSIT-3A class schedule (from student timetable screenshot).
-CLASS_SCHEDULE = [
-    {'day': 'Monday', 'time': '7:30-8:30am', 'code': 'IT302', 'room': 'LAB 6', 'instructor': 'Mr. Azuelo', 'title': 'Networking 2'},
-    {'day': 'Monday', 'time': '9:10-10:30am', 'code': 'IT304', 'room': 'LAB 4', 'instructor': 'Ms. Israel', 'title': 'Social and Professional Issues 1'},
-    {'day': 'Monday', 'time': '10:30-11:30am', 'code': 'IT303', 'room': 'LAB 7', 'instructor': 'Mr. Suarez', 'title': 'Advanced Database Systems'},
-    {'day': 'Monday', 'time': '1:00-2:00pm', 'code': 'ITE107', 'room': 'LAB 6', 'instructor': 'Mr. Azuelo', 'title': 'Web Systems and Technologies 2'},
-    {'day': 'Monday', 'time': '2:00-3:00pm', 'code': 'IT301', 'room': 'CMAT 104', 'instructor': 'Mr. Erillo', 'title': 'Quantitative Methods'},
-    {'day': 'Tuesday', 'time': '8:00-11:00am', 'code': 'ITE107', 'room': 'LAB 6', 'instructor': 'Mr. Azuelo', 'title': 'Web Systems and Technologies 2'},
-    {'day': 'Tuesday', 'time': '1:30-2:30pm', 'code': 'IT303', 'room': 'LAB 7', 'instructor': 'Mr. Suarez', 'title': 'Advanced Database Systems'},
-    {'day': 'Tuesday', 'time': '2:30-3:30pm', 'code': 'IT304', 'room': 'LAB 4', 'instructor': 'Ms. Israel', 'title': 'Social and Professional Issues 1'},
-    {'day': 'Wednesday', 'time': '7:30-10:30am', 'code': 'IT302', 'room': 'LAB 6', 'instructor': 'Mr. Azuelo', 'title': 'Networking 2'},
-    {'day': 'Wednesday', 'time': '10:30-11:30am', 'code': 'IT303', 'room': 'LAB 7', 'instructor': 'Mr. Suarez', 'title': 'Advanced Database Systems'},
-    {'day': 'Wednesday', 'time': '2:00-3:00pm', 'code': 'IT301', 'room': 'CMAT 104', 'instructor': 'Mr. Erillo', 'title': 'Quantitative Methods'},
-    {'day': 'Thursday', 'time': '7:30-8:30am', 'code': 'IT302', 'room': 'LAB 6', 'instructor': 'Mr. Azuelo', 'title': 'Networking 2'},
-    {'day': 'Thursday', 'time': '8:30-10:30am', 'code': 'ITE106', 'room': 'LAB 1', 'instructor': 'Ms. Israel', 'title': 'Information Assurance and Security 2'},
-    {'day': 'Thursday', 'time': '10:30-11:30am', 'code': 'ITE107', 'room': 'LAB 6', 'instructor': 'Mr. Azuelo', 'title': 'Web Systems and Technologies 2'},
-    {'day': 'Thursday', 'time': '1:30-2:30pm', 'code': 'IT303', 'room': 'LAB 7', 'instructor': 'Mr. Suarez', 'title': 'Advanced Database Systems'},
-    {'day': 'Friday', 'time': '7:30-10:30am', 'code': 'ITE106', 'room': 'LAB 1', 'instructor': 'Ms. Israel', 'title': 'Information Assurance and Security 2'},
-    {'day': 'Friday', 'time': '10:30-11:30am', 'code': 'IT303', 'room': 'LAB 7', 'instructor': 'Mr. Suarez', 'title': 'Advanced Database Systems'},
-    {'day': 'Friday', 'time': '1:00-2:00pm', 'code': 'IT304', 'room': 'LAB 4', 'instructor': 'Ms. Israel', 'title': 'Social and Professional Issues 1'},
-    {'day': 'Friday', 'time': '2:00-3:00pm', 'code': 'IT301', 'room': 'CMAT 104', 'instructor': 'Mr. Erillo', 'title': 'Quantitative Methods'},
-    {'day': 'Friday', 'time': '5:00-7:00pm', 'code': 'Theology 5', 'room': 'CMAT 303', 'instructor': 'Mr. Glemon', 'title': 'Moral Theology'},
-]
-
-SCHEDULE_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-
-# One walk-mode destination per subject, mapped to the building that holds its room.
-SUBJECTS = []
-_subject_index = {}
-for _s in CLASS_SCHEDULE:
-    _item = _subject_index.get(_s['code'])
-    if _item is None:
-        _item = {
-            'code': _s['code'],
-            'title': _s['title'],
-            'room': _s['room'],
-            'building': 'college',
-            'days': [],
-        }
-        _subject_index[_s['code']] = _item
-        SUBJECTS.append(_item)
-    if _s['day'] not in _item['days']:
-        _item['days'].append(_s['day'])
-
-FLOOR_NAMES = {
-    '1': '1st Floor',
-    '2': '2nd Floor',
-    '3': '3rd Floor',
-    '4': '4th Floor',
-    'G': 'Ground Floor',
-}
-
-# Matches "IT 2-101", "IT 2 101", "BSIT 3-A", "Grade 7-A"
-CODE_PATTERN = re.compile(
-    r'^\s*(?P<bldg>[A-Za-z]+)\s*(?P<floor>\d)?\s*[- ]?\s*(?P<room>[\w\-]+)\s*$'
-)
-
-
-def find_classroom(query):
-    """Parse a room code and return Building/Floor/Room/Nearby dict, or None."""
-    if not query or not query.strip():
-        return None
-    raw = query.strip()
-    upper = raw.upper()
-
-    # 0. Lab/lecture rooms e.g. LAB 6, LAB6, CMAT 104, CMAT104
-    m0 = re.match(r'^\s*(LAB|CMAT)\s*(\d+)\s*$', upper)
-    if m0:
-        bldg_code, room_num = m0.groups()
-        info = BUILDING_LOOKUP.get(bldg_code)
-        if info:
-            return {
-                'query': raw,
-                'code': f'{bldg_code} {room_num}',
-                'building': info['building'],
-                'floor': '2nd Floor' if bldg_code == 'LAB' else 'Ground Floor',
-                'room': room_num,
-                'nearby': info['nearby'],
-                'desc': info['desc'],
-            }
-
-    # 1. Direct "BLDG FLOOR-ROOM" e.g. IT 2-101
-    m = re.match(r'^\s*([A-Z]+)\s+(\d)\s*[- ]\s*(\d+[A-Z]?)\s*$', upper)
-    if m:
-        bldg_code, floor_num, room_num = m.groups()
-        info = BUILDING_LOOKUP.get(bldg_code)
-        if info:
-            return {
-                'query': raw,
-                'code': f'{bldg_code} {floor_num}-{room_num}',
-                'building': info['building'],
-                'floor': FLOOR_NAMES.get(floor_num, f'{floor_num} Floor'),
-                'room': room_num,
-                'nearby': info['nearby'],
-                'desc': info['desc'],
-            }
-
-    # 2. Known room codes e.g. BSIT 3-A, Grade 7-A, STEM 11-A
-    m2 = CODE_PATTERN.match(raw)
-    if m2:
-        bldg = m2.group('bldg').upper()
-        info = BUILDING_LOOKUP.get(bldg)
-        if info:
-            floor_num = m2.group('floor') or ''
-            room = m2.group('room') or ''
-            floor_label = FLOOR_NAMES.get(floor_num, f'{floor_num} Floor' if floor_num else 'Ground Floor')
-            return {
-                'query': raw,
-                'code': raw.upper(),
-                'building': info['building'],
-                'floor': floor_label,
-                'room': room,
-                'nearby': info['nearby'],
-                'desc': info['desc'],
-            }
-
-    return None
-
-
-def dashboard_view(request):
-    """Public dashboard: hero search (room/subject) + weekly schedule. No login needed."""
-
-    q = request.GET.get('q', '').strip()
-    day = request.GET.get('day', '').strip()
-    result = find_classroom(q) if q else None
-    not_found = False
-    schedule = CLASS_SCHEDULE
-    if q and result is None:
-        # Subject search: match code/title/instructor/room/day
-        ql = q.lower()
-        matched = [s for s in CLASS_SCHEDULE if ql in f"{s['code']} {s['title']} {s['instructor']} {s['room']} {s['day']}".lower()]
-        if matched:
-            schedule = matched
-        else:
-            not_found = True
-    if day in SCHEDULE_DAYS:
-        schedule = [s for s in schedule if s['day'] == day]
-
-    context = {
-        'q': q,
-        'day': day,
-        'days': SCHEDULE_DAYS,
-        'schedule': schedule,
-        'result': result,
-        'not_found': not_found,
-        'total_subjects': len({s['code'] for s in CLASS_SCHEDULE}),
-        'total_classes': len(CLASS_SCHEDULE),
-    }
-    return render(request, 'dashboard.html', context)
