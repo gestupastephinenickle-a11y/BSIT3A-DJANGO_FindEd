@@ -139,15 +139,14 @@ def logout_view(request):
     return redirect('login')
 
 
-def home(request):
-    # Public guide — no login needed so new students can find rooms.
-    # Starter campus data for Kabankalan Catholic College (KCC)
-    # Guanzon St., Brgy. 1, Kabankalan City. Edit freely — later move to DB.
-    # Real KCC layout (from school history + student guides):
-    # College = 2 storeys | HS = 3 storeys, chapel in front | Elementary = 2
-    # storeys beside canteen | St. Columban Arts Center + annex (canteen G/F,
-    # library upper) | Gym. Room lists are starters — correct me anytime.
-    buildings = [
+# Public guide data — no login needed so new students can find rooms.
+# Starter campus data for Kabankalan Catholic College (KCC)
+# Guanzon St., Brgy. 1, Kabankalan City. Edit freely — later move to DB.
+# Real KCC layout (from school history + student guides):
+# College = 2 storeys | HS = 3 storeys, chapel in front | Elementary = 2
+# storeys beside canteen | St. Columban Arts Center + annex (canteen G/F,
+# library upper) | Gym. Room lists are starters — correct me anytime.
+CAMPUS_BUILDINGS = [
         {
             "id": "main",
             "name": "Admin Building",
@@ -287,8 +286,48 @@ def home(request):
                 {"code": "PE Room", "floor": "G/F", "detail": "Equipment"},
             ],
         },
-    ]
-    return render(request, 'home.html', {'buildings': buildings})
+]
+
+# Real KCC anchor (OpenStreetMap): Guanzon St., Brgy. 1, Kabankalan City.
+KCC_GATE = [9.997965, 122.814818]
+
+CAMPUS_PINS = {
+    'main': [9.997740, 122.814635],
+    'college': [9.997605, 122.814315],
+    'arts': [9.997650, 122.814910],
+    'hs': [9.997605, 122.815321],
+    'annex': [9.997380, 122.814910],
+    'chapel': [9.997335, 122.815321],
+    'elem': [9.997065, 122.814315],
+    'gym': [9.997020, 122.815276],
+}
+
+# Starter campus drive paths (lat, lng) from the Main Gate to each building.
+CAMPUS_PATHS = {
+    'main': [KCC_GATE, [9.997850, 122.814800], [9.997850, 122.814700], [9.997740, 122.814635]],
+    'college': [KCC_GATE, [9.997850, 122.814800], [9.997850, 122.814450], [9.997700, 122.814380], [9.997605, 122.814315]],
+    'arts': [KCC_GATE, [9.997850, 122.814818], [9.997850, 122.814900], [9.997720, 122.814910], [9.997650, 122.814910]],
+    'hs': [KCC_GATE, [9.997850, 122.814818], [9.997850, 122.815250], [9.997700, 122.815300], [9.997605, 122.815321]],
+    'annex': [KCC_GATE, [9.997850, 122.814818], [9.997850, 122.814900], [9.997550, 122.814910], [9.997380, 122.814910]],
+    'chapel': [KCC_GATE, [9.997850, 122.814818], [9.997850, 122.815250], [9.997450, 122.815300], [9.997335, 122.815321]],
+    'elem': [KCC_GATE, [9.997850, 122.814800], [9.997850, 122.814450], [9.997300, 122.814380], [9.997065, 122.814315]],
+    'gym': [KCC_GATE, [9.997850, 122.814818], [9.997850, 122.815180], [9.997300, 122.815240], [9.997020, 122.815276]],
+}
+
+
+def home(request):
+    return render(request, 'home.html', {'buildings': CAMPUS_BUILDINGS})
+
+
+def ride_view(request):
+    """First-person motorcycle ride map with real-time GPS + live routing."""
+    context = {
+        'buildings': CAMPUS_BUILDINGS,
+        'pins': CAMPUS_PINS,
+        'paths': CAMPUS_PATHS,
+        'gate': KCC_GATE,
+    }
+    return render(request, 'ride.html', context)
 
 
 @require_http_methods(['GET', 'POST'])
