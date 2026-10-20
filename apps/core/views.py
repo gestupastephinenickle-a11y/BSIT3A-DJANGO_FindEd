@@ -178,6 +178,12 @@ CAMPUS_BUILDINGS = [
                 {"code": "BSA 2-A", "floor": "2F", "detail": "Accountancy"},
                 {"code": "BS Psych 2-A", "floor": "2F", "detail": "Psychology"},
                 {"code": "BSED 3-A", "floor": "2F", "detail": "Teacher Education"},
+                {"code": "LAB 1", "floor": "2F", "detail": "Computer laboratory"},
+                {"code": "LAB 4", "floor": "2F", "detail": "Computer laboratory"},
+                {"code": "LAB 6", "floor": "2F", "detail": "Computer laboratory • Networking"},
+                {"code": "LAB 7", "floor": "2F", "detail": "Computer laboratory • Database"},
+                {"code": "CMAT 104", "floor": "G/F", "detail": "Lecture room • Quantitative Methods"},
+                {"code": "CMAT 303", "floor": "3F", "detail": "Lecture room • Theology"},
             ],
         },
         {
@@ -316,7 +322,7 @@ CAMPUS_PATHS = {
 
 
 def home(request):
-    return render(request, 'home.html', {'buildings': CAMPUS_BUILDINGS})
+    return render(request, 'home.html', {'buildings': CAMPUS_BUILDINGS, 'subjects': SUBJECTS})
 
 
 def ride_view(request):
@@ -326,6 +332,8 @@ def ride_view(request):
         'pins': CAMPUS_PINS,
         'paths': CAMPUS_PATHS,
         'gate': KCC_GATE,
+        'subjects': SUBJECTS,
+        'selected_subject': request.GET.get('subject', '').strip(),
     }
     return render(request, 'ride.html', context)
 
@@ -448,6 +456,24 @@ CLASS_SCHEDULE = [
 ]
 
 SCHEDULE_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+
+# One walk-mode destination per subject, mapped to the building that holds its room.
+SUBJECTS = []
+_subject_index = {}
+for _s in CLASS_SCHEDULE:
+    _item = _subject_index.get(_s['code'])
+    if _item is None:
+        _item = {
+            'code': _s['code'],
+            'title': _s['title'],
+            'room': _s['room'],
+            'building': 'college',
+            'days': [],
+        }
+        _subject_index[_s['code']] = _item
+        SUBJECTS.append(_item)
+    if _s['day'] not in _item['days']:
+        _item['days'].append(_s['day'])
 
 FLOOR_NAMES = {
     '1': '1st Floor',

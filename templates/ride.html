@@ -8,6 +8,8 @@
 {{ pins|json_script:"campus-pins" }}
 {{ paths|json_script:"campus-paths" }}
 {{ gate|json_script:"campus-gate" }}
+{{ subjects|json_script:"campus-subjects" }}
+{{ selected_subject|json_script:"selected-subject" }}
 <style>
   .ride-page { --ride-accent: #ff7a00; --ride-dark: #0b0d12; }
   .ride-head { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; justify-content: space-between; margin-bottom: .9rem; }
@@ -105,14 +107,44 @@
   .gate-marker { background: rgba(12,14,19,.88); border: 1px solid rgba(255,255,255,.3); color: #fff;
     font-size: 10px; font-weight: 800; letter-spacing: .08em; padding: .22rem .5rem; border-radius: 999px; white-space: nowrap;
     box-shadow: 0 6px 16px rgba(0,0,0,.4); }
-  .bike-marker { width: 44px; height: 44px; position: relative; }
+  .bike-marker { width: 56px; height: 56px; position: relative; }
   .bike-marker .ring { position: absolute; inset: 1px; border-radius: 50%; border: 2px solid rgba(255,122,0,.65);
     animation: bikePulse 1.8s ease-out infinite; }
-  .bike-marker .bike-icon { position: absolute; inset: 5px; border-radius: 50%; background: #0d1016;
+  .bike-marker .bike-icon { position: absolute; inset: 4px; border-radius: 50%; background: #0d1016;
     border: 2px solid #ff7a00; box-shadow: 0 6px 18px rgba(0,0,0,.55), 0 0 24px rgba(255,122,0,.35);
-    display: flex; align-items: center; justify-content: center; will-change: transform; }
-  .bike-marker .bike-icon svg { width: 26px; height: 26px; }
+    display: flex; align-items: center; justify-content: center; will-change: transform; overflow: hidden; }
+  .bike-marker .bike-icon svg { width: 40px; height: 40px; }
   @keyframes bikePulse { 0% { transform: scale(.8); opacity: .9; } 100% { transform: scale(1.7); opacity: 0; } }
+
+  /* side-view pixel walk cycle on the moving marker */
+  .walker2 { shape-rendering: crispEdges; }
+  .walker2 .leg, .walker2 .shin, .walker2 .arm, .walker2 .forearm, .walker2 .body-bob { transform-box: view-box; }
+  .walker2 .leg-front { transform-origin: 23.2px 23.8px; }
+  .walker2 .leg-back { transform-origin: 20.5px 23.8px; }
+  .walker2 .shin-front { transform-origin: 23.2px 30.6px; }
+  .walker2 .shin-back { transform-origin: 20.5px 30.6px; }
+  .walker2 .arm-front { transform-origin: 25.5px 14.6px; }
+  .walker2 .arm-back { transform-origin: 20.6px 14.6px; }
+  .walker2 .forearm-front { transform-origin: 25.5px 20.7px; }
+  .walker2 .forearm-back { transform-origin: 20.6px 20.7px; }
+  .ride-shell.playing .walker2 .leg-front { animation: legFront .9s linear infinite; }
+  .ride-shell.playing .walker2 .leg-back { animation: legBack .9s linear infinite; }
+  .ride-shell.playing .walker2 .shin-front { animation: shinFront .9s linear infinite; }
+  .ride-shell.playing .walker2 .shin-back { animation: shinBack .9s linear infinite; }
+  .ride-shell.playing .walker2 .arm-front { animation: armFront .9s linear infinite; }
+  .ride-shell.playing .walker2 .arm-back { animation: armBack .9s linear infinite; }
+  .ride-shell.playing .walker2 .forearm-front { animation: foreFront .9s linear infinite; }
+  .ride-shell.playing .walker2 .forearm-back { animation: foreBack .9s linear infinite; }
+  .ride-shell.playing .walker2 .body-bob { animation: walkBob2 .45s ease-in-out infinite alternate; }
+  @keyframes legFront { 0% { transform: rotate(-22deg); } 25% { transform: rotate(0deg); } 50% { transform: rotate(20deg); } 75% { transform: rotate(-4deg); } 100% { transform: rotate(-22deg); } }
+  @keyframes legBack { 0% { transform: rotate(20deg); } 25% { transform: rotate(-4deg); } 50% { transform: rotate(-22deg); } 75% { transform: rotate(0deg); } 100% { transform: rotate(20deg); } }
+  @keyframes shinFront { 0% { transform: rotate(2deg); } 25% { transform: rotate(28deg); } 50% { transform: rotate(4deg); } 75% { transform: rotate(0deg); } 100% { transform: rotate(2deg); } }
+  @keyframes shinBack { 0% { transform: rotate(4deg); } 25% { transform: rotate(0deg); } 50% { transform: rotate(2deg); } 75% { transform: rotate(28deg); } 100% { transform: rotate(4deg); } }
+  @keyframes armFront { 0% { transform: rotate(18deg); } 25% { transform: rotate(2deg); } 50% { transform: rotate(-20deg); } 75% { transform: rotate(0deg); } 100% { transform: rotate(18deg); } }
+  @keyframes armBack { 0% { transform: rotate(-20deg); } 25% { transform: rotate(0deg); } 50% { transform: rotate(18deg); } 75% { transform: rotate(2deg); } 100% { transform: rotate(-20deg); } }
+  @keyframes foreFront { 0% { transform: rotate(8deg); } 50% { transform: rotate(18deg); } 100% { transform: rotate(8deg); } }
+  @keyframes foreBack { 0% { transform: rotate(18deg); } 50% { transform: rotate(8deg); } 100% { transform: rotate(18deg); } }
+  @keyframes walkBob2 { from { transform: translateY(0); } to { transform: translateY(-1px); } }
 
   .ride-help { display: flex; flex-wrap: wrap; gap: .35rem 1rem; margin-top: .7rem; font-size: 11.5px; color: #a9a397; }
   .ride-help i { color: #ff9c3f; }
@@ -137,8 +169,8 @@
   <div class="ride-head">
     <div>
       <div class="page-pretitle">FindEd • KCC Campus</div>
-      <h2 class="page-title mb-1"><i class="fas fa-motorcycle me-2" style="color:#ff7a00"></i>Ride Mode</h2>
-      <div class="text-muted">First-person scooter ride to your room — live GPS, real roads, real-time turns.</div>
+      <h2 class="page-title mb-1"><i class="fas fa-walking me-2" style="color:#ff7a00"></i>Walk Mode</h2>
+      <div class="text-muted">First-person walk to your room — live GPS, real roads, real-time turns.</div>
     </div>
     <div class="d-flex gap-2">
       <a href="{% url 'finder' %}" class="btn btn-outline-secondary"><i class="fas fa-map-location-dot me-1"></i> Map guide</a>
@@ -152,13 +184,15 @@
 
     <!-- Destination + ride controls -->
     <div class="ride-panel">
-      <div class="ride-panel-head"><span class="dot"></span> Ride setup <span class="ms-auto" style="color:#6f6a61">KCC</span></div>
+      <div class="ride-panel-head"><span class="dot"></span> Walk SetUp <span class="ms-auto" style="color:#6f6a61">KCC</span></div>
+      <label class="form-label" for="dest-subject">Subject / class</label>
+      <select id="dest-subject" class="form-select form-select-sm mb-2"></select>
       <label class="form-label" for="dest-building">Destination building</label>
       <select id="dest-building" class="form-select form-select-sm mb-2"></select>
       <label class="form-label" for="dest-room">Room / stop</label>
       <select id="dest-room" class="form-select form-select-sm mb-2"></select>
       <div class="d-flex gap-2">
-        <button id="ride-btn" class="btn btn-ride flex-grow-1"><i class="fas fa-motorcycle me-1"></i> Start ride</button>
+        <button id="ride-btn" class="btn btn-ride flex-grow-1"><i class="fas fa-walking me-1"></i> Start Walk</button>
         <button id="reset-btn" class="btn btn-ride-ghost" title="Reset ride"><i class="fas fa-rotate-left"></i></button>
       </div>
       <div class="ride-options">
@@ -273,9 +307,12 @@
   const PINS = JSON.parse(document.getElementById('campus-pins').textContent);
   const PATHS = JSON.parse(document.getElementById('campus-paths').textContent);
   const GATE = JSON.parse(document.getElementById('campus-gate').textContent);
+  const SUBJECTS = JSON.parse(document.getElementById('campus-subjects').textContent);
+  const SELECTED_SUBJECT = JSON.parse(document.getElementById('selected-subject').textContent);
 
   const shell = document.getElementById('ride-shell');
   const mapEl = document.getElementById('ride-map');
+  const subjectSel = document.getElementById('dest-subject');
   const buildingSel = document.getElementById('dest-building');
   const roomSel = document.getElementById('dest-room');
   const rideBtn = document.getElementById('ride-btn');
@@ -312,6 +349,17 @@
     buildingSel.appendChild(opt);
   });
 
+  const subjectPlaceholder = document.createElement('option');
+  subjectPlaceholder.value = '';
+  subjectPlaceholder.textContent = 'Choose a subject…';
+  subjectSel.appendChild(subjectPlaceholder);
+  SUBJECTS.forEach(function (s) {
+    const opt = document.createElement('option');
+    opt.value = s.code;
+    opt.textContent = s.code + ' — ' + s.title + ' (' + s.room + ')';
+    subjectSel.appendChild(opt);
+  });
+
   let destBuilding = buildings.some(function (b) { return b.id === 'college'; }) ? 'college' : buildings[0].id;
   let destRoom = '';
   let route = [];
@@ -343,6 +391,23 @@
   fillRooms(destBuilding);
   destRoom = roomSel.value;
   updateDestLabel();
+
+  const initialSubject = SUBJECTS.find(function (s) { return s.code === SELECTED_SUBJECT; });
+  if (initialSubject) applySubject(initialSubject.code);
+
+  function applySubject(code) {
+    const subject = SUBJECTS.find(function (s) { return s.code === code; });
+    if (!subject) return;
+    subjectSel.value = subject.code;
+    destBuilding = subject.building;
+    buildingSel.value = destBuilding;
+    fillRooms(destBuilding);
+    roomSel.value = subject.room;
+    destRoom = roomSel.value || subject.room;
+    updateDestLabel();
+    positionDestMarker();
+    resetRide();
+  }
 
   function fillRooms(buildingId) {
     const b = buildings.find(function (x) { return x.id === buildingId; });
@@ -614,7 +679,7 @@
     routeToken++;
     shell.classList.remove('playing');
     if (engine) engine.gain.gain.setTargetAtTime(0, engine.ctx.currentTime, 0.12);
-    rideBtn.innerHTML = '<i class="fas fa-motorcycle me-1"></i> Start ride';
+    rideBtn.innerHTML = '<i class="fas fa-walking me-1"></i> Start Walk';
     updateBike();
     updateProgressLine();
     updateHud(performance.now(), true);
@@ -681,7 +746,7 @@
     arrived = true;
     playing = false;
     shell.classList.remove('playing');
-    rideBtn.innerHTML = '<i class="fas fa-rotate-right me-1"></i> Ride again';
+    rideBtn.innerHTML = '<i class="fas fa-rotate-right me-1"></i> Walk Again';
     if (engine) engine.gain.gain.setTargetAtTime(0, engine.ctx.currentTime, 0.2);
     const b = currentBuilding();
     const room = b.rooms.find(function (r) { return r.code === destRoom; });
@@ -867,12 +932,42 @@
     bikeEl.className = 'bike-marker';
     bikeEl.innerHTML = '<div class="ring"></div><div class="bike-icon">' +
       '<svg viewBox="0 0 40 40" aria-hidden="true">' +
-      '<ellipse cx="20" cy="8" rx="4.4" ry="6.5" fill="#e8eef8"/>' +
-      '<ellipse cx="20" cy="32" rx="4.4" ry="6.5" fill="#e8eef8"/>' +
-      '<rect x="17.6" y="11" width="4.8" height="18" rx="2.4" fill="#ff7a00"/>' +
-      '<circle cx="20" cy="20" r="5.2" fill="#fff" stroke="#0d1016" stroke-width="2.4"/>' +
-      '<rect x="9.5" y="13.4" width="21" height="2.8" rx="1.4" fill="#cfd6e2"/>' +
-      '<rect x="9.5" y="23.8" width="21" height="2.8" rx="1.4" fill="#cfd6e2"/>' +
+      '<g class="walker2">' +
+      '<g class="leg leg-back">' +
+      '<rect x="18.8" y="23.8" width="3.4" height="7.4" fill="#3a465e"/>' +
+      '<g class="shin shin-back">' +
+      '<rect x="18.8" y="30.6" width="3.4" height="6.4" fill="#3a465e"/>' +
+      '<rect x="18.8" y="36.4" width="6" height="2.2" fill="#161b24"/>' +
+      '</g></g>' +
+      '<g class="leg leg-front">' +
+      '<rect x="21.4" y="23.8" width="3.6" height="7.4" fill="#4d5b78"/>' +
+      '<g class="shin shin-front">' +
+      '<rect x="21.4" y="30.6" width="3.6" height="6.4" fill="#4d5b78"/>' +
+      '<rect x="21.4" y="36.4" width="6.4" height="2.2" fill="#1a1f29"/>' +
+      '</g></g>' +
+      '<g class="body-bob">' +
+      '<g class="arm arm-back">' +
+      '<rect x="19.2" y="14.6" width="2.8" height="6.6" fill="#4a5875"/>' +
+      '<g class="forearm forearm-back">' +
+      '<rect x="19.2" y="20.7" width="2.8" height="5.6" fill="#4a5875"/>' +
+      '<rect x="19.2" y="25.8" width="2.8" height="2.4" fill="#e8b48c"/>' +
+      '</g></g>' +
+      '<rect x="18.4" y="12.8" width="8.8" height="12.4" rx="1.6" fill="#6b7a99"/>' +
+      '<rect x="22" y="12.8" width="2.2" height="5.4" fill="#e8eef8"/>' +
+      '<rect x="22.9" y="15.5" width="1" height="4.8" fill="#ff7a00"/>' +
+      '<g class="arm arm-front">' +
+      '<rect x="24" y="14.6" width="3" height="6.6" fill="#7b8baa"/>' +
+      '<g class="forearm forearm-front">' +
+      '<rect x="24" y="20.7" width="3" height="5.6" fill="#7b8baa"/>' +
+      '<rect x="24" y="25.8" width="3" height="2.4" fill="#f2c39d"/>' +
+      '</g></g>' +
+      '<rect x="21.2" y="6.6" width="6.2" height="6.4" fill="#f2c39d"/>' +
+      '<rect x="20.2" y="4" width="7.4" height="3.2" fill="#2a303c"/>' +
+      '<rect x="25.6" y="6.6" width="1.8" height="2.4" fill="#2a303c"/>' +
+      '<rect x="25.4" y="8.6" width="1" height="1" fill="#20242e"/>' +
+      '<rect x="22.2" y="12.4" width="3.2" height="1.6" fill="#e8b48c"/>' +
+      '</g>' +
+      '</g>' +
       '</svg></div>';
     bikeMarker = new maplibregl.Marker({ element: bikeEl, anchor: 'center' }).setLngLat([GATE[1], GATE[0]]).addTo(map);
     bikeIconEl = bikeEl.querySelector('.bike-icon');
@@ -945,7 +1040,21 @@
   }
 
   /* ---------------- events ---------------- */
+  subjectSel.addEventListener('change', function () {
+    if (subjectSel.value) {
+      applySubject(subjectSel.value);
+    } else {
+      destBuilding = buildingSel.value;
+      fillRooms(destBuilding);
+      destRoom = roomSel.value;
+      updateDestLabel();
+      positionDestMarker();
+      resetRide();
+    }
+  });
+
   buildingSel.addEventListener('change', function () {
+    subjectSel.value = '';
     destBuilding = buildingSel.value;
     fillRooms(destBuilding);
     destRoom = roomSel.value;
@@ -954,6 +1063,7 @@
   });
 
   roomSel.addEventListener('change', function () {
+    subjectSel.value = '';
     destRoom = roomSel.value;
     updateDestLabel();
     positionDestMarker();
