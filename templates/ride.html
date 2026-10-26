@@ -67,6 +67,36 @@
   .ride-livebadge.show { display: flex; }
   .ride-livebadge .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #38bdf8; animation: livePulse 1.4s infinite; }
 
+  .ai-guide { position: absolute; z-index: 9; top: 14px; left: 50%; transform: translate(-50%, -10px);
+    width: min(440px, calc(100% - 28px)); display: flex; align-items: flex-start; gap: .7rem;
+    background: rgba(12,14,19,.94); backdrop-filter: blur(16px) saturate(130%); -webkit-backdrop-filter: blur(16px) saturate(130%);
+    border: 1px solid rgba(255,122,0,.45); border-radius: 16px; padding: .7rem .8rem; color: #f5f4f0;
+    box-shadow: 0 18px 44px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,122,0,.08);
+    opacity: 0; pointer-events: none; transition: opacity .25s ease, transform .25s ease; }
+  .ai-guide.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  .ai-avatar { position: relative; width: 38px; height: 38px; flex: 0 0 38px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg,#ff8c1a,#ff5e00);
+    color: #140d06; font-size: 17px; box-shadow: 0 6px 18px rgba(255,106,0,.35); }
+  .ai-guide.speaking .ai-avatar::after { content: ''; position: absolute; inset: -4px; border-radius: 15px;
+    border: 2px solid rgba(255,122,0,.65); animation: aiPulse 1.3s ease-out infinite; }
+  @keyframes aiPulse { 0% { transform: scale(.9); opacity: .9; } 100% { transform: scale(1.35); opacity: 0; } }
+  .ai-copy { flex: 1; min-width: 0; }
+  .ai-title { display: flex; align-items: center; gap: .4rem; font-size: 10px; font-weight: 800;
+    letter-spacing: .12em; text-transform: uppercase; color: #ffb35c; }
+  .ai-status { font-size: 9px; letter-spacing: .05em; color: #9d978b; text-transform: none; font-weight: 700; }
+  .ai-wave { display: inline-flex; align-items: flex-end; gap: 2px; height: 10px; margin-left: 2px; opacity: 0; transition: opacity .2s; }
+  .ai-guide.speaking .ai-wave { opacity: 1; }
+  .ai-wave i { display: block; width: 2px; height: 4px; border-radius: 2px; background: #ffb35c; animation: aiWave .8s ease-in-out infinite; }
+  .ai-wave i:nth-child(2) { animation-delay: .12s; }
+  .ai-wave i:nth-child(3) { animation-delay: .24s; }
+  .ai-wave i:nth-child(4) { animation-delay: .36s; }
+  .ai-wave i:nth-child(5) { animation-delay: .48s; }
+  @keyframes aiWave { 0%, 100% { height: 3px; } 50% { height: 10px; } }
+  .ai-text { margin-top: .2rem; font-size: 12.5px; line-height: 1.45; color: #e9e4da; }
+  .ai-close { flex: 0 0 auto; width: 24px; height: 24px; border: 0; border-radius: 8px; background: rgba(255,255,255,.07);
+    color: #b8b2a7; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+  .ai-close:hover { background: rgba(255,255,255,.14); color: #fff; }
+
   .ride-hud { position: absolute; z-index: 5; left: 14px; bottom: 14px; width: min(360px, calc(100% - 28px));
     background: rgba(12,14,19,.88); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.13);
     border-radius: 16px; padding: 12px 14px; box-shadow: 0 16px 40px rgba(0,0,0,.45); transition: bottom .3s ease; }
@@ -203,6 +233,9 @@
     .ride-cockpit .cockpit-speed { bottom: 96px; }
     .ride-cockpit .cockpit-speed #speed-big { font-size: 26px; }
     .ride-shell.pov .ride-toast { bottom: 190px; }
+    .ai-guide { top: auto; bottom: 170px; left: 14px; right: 14px; width: auto; transform: translateY(10px); }
+    .ai-guide.show { transform: translateY(0); }
+    .ride-shell.pov .ai-guide { bottom: 300px; }
   }
   @media (max-width: 575.98px) {
     .ride-panel { padding: 11px; }
@@ -217,7 +250,7 @@
     <div>
       <div class="page-pretitle">FindEd • KCC Campus</div>
       <h2 class="page-title mb-1"><i class="fas fa-walking me-2" style="color:#ff7a00"></i>Walk Mode</h2>
-      <div class="text-muted">First-person walk to your room — live GPS, real roads, real-time turns.</div>
+      <div class="text-muted">First-person walk to your room — live GPS, real roads, real-time turns, and an AI guide that speaks on arrival.</div>
     </div>
     <div class="d-flex gap-2">
       <a href="{% url 'finder' %}" class="btn btn-outline-secondary"><i class="fas fa-map-location-dot me-1"></i> Map guide</a>
@@ -249,11 +282,23 @@
         <button id="overview-btn" title="See whole route"><i class="fas fa-map"></i></button>
         <button id="layer-btn" title="Satellite / street map"><i class="fas fa-layer-group"></i></button>
         <button id="sound-btn" title="Engine sound"><i class="fas fa-volume-xmark"></i></button>
+        <button id="ai-btn" class="active" title="AI voice guide: on"><i class="fas fa-robot"></i> AI</button>
       </div>
       <div id="gps-status" class="ride-gps-status d-none"><span class="live-dot"></span><span id="gps-status-text">GPS live</span></div>
     </div>
 
     <div class="ride-livebadge" id="live-badge"><span class="live-dot"></span> LIVE GPS</div>
+
+    <div class="ai-guide" id="ai-guide" role="status" aria-live="polite">
+      <div class="ai-avatar"><i class="fas fa-robot"></i></div>
+      <div class="ai-copy">
+        <div class="ai-title">KCC AI Guide <span class="ai-status" id="ai-status">ready</span>
+          <span class="ai-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+        </div>
+        <div class="ai-text" id="ai-text">I will tell you when you reach your room.</div>
+      </div>
+      <button class="ai-close" id="ai-close" type="button" aria-label="Close AI guide"><i class="fas fa-xmark"></i></button>
+    </div>
 
     <!-- Turn-by-turn + stats -->
     <div class="ride-hud">
@@ -335,6 +380,7 @@
     <span><i class="fas fa-location-crosshairs me-1"></i>GPS uses your real position</span>
     <span><i class="fas fa-route me-1"></i>Real roads via OSRM, campus lanes inside KCC</span>
     <span><i class="fas fa-volume-high me-1"></i>Optional engine sound</span>
+    <span><i class="fas fa-robot me-1"></i>AI guide speaks on arrival</span>
   </div>
 </div>
 {% endblock %}
@@ -352,6 +398,19 @@
   const SUBJECTS = JSON.parse(document.getElementById('campus-subjects').textContent);
   const SELECTED_SUBJECT = JSON.parse(document.getElementById('selected-subject').textContent);
 
+  // Lock the walk map to the KCC campus only (Guanzon St., Kabankalan City).
+  const CAMPUS_PAD = 0.0004;
+  const campusLngs = Object.values(PINS).map(function (p) { return Number(p[1]); }).concat([Number(GATE[1])]);
+  const campusLats = Object.values(PINS).map(function (p) { return Number(p[0]); }).concat([Number(GATE[0])]);
+  const CAMPUS_BOUNDS = [
+    [Math.min.apply(null, campusLngs) - CAMPUS_PAD, Math.min.apply(null, campusLats) - CAMPUS_PAD],
+    [Math.max.apply(null, campusLngs) + CAMPUS_PAD, Math.max.apply(null, campusLats) + CAMPUS_PAD]
+  ];
+  const CAMPUS_CENTER = [
+    (CAMPUS_BOUNDS[0][0] + CAMPUS_BOUNDS[1][0]) / 2,
+    (CAMPUS_BOUNDS[0][1] + CAMPUS_BOUNDS[1][1]) / 2
+  ];
+
   const shell = document.getElementById('ride-shell');
   const mapEl = document.getElementById('ride-map');
   const subjectSel = document.getElementById('dest-subject');
@@ -368,6 +427,11 @@
   const overviewBtn = document.getElementById('overview-btn');
   const layerBtn = document.getElementById('layer-btn');
   const soundBtn = document.getElementById('sound-btn');
+  const aiBtn = document.getElementById('ai-btn');
+  const aiGuide = document.getElementById('ai-guide');
+  const aiText = document.getElementById('ai-text');
+  const aiStatus = document.getElementById('ai-status');
+  const aiClose = document.getElementById('ai-close');
   const turnIcon = document.getElementById('turn-icon');
   const turnText = document.getElementById('turn-text');
   const turnDist = document.getElementById('turn-dist');
@@ -422,6 +486,10 @@
   let live = { on: false, pos: null, acc: null, watchId: null };
   let soundOn = false;
   let engine = null;
+  let aiVoiceOn = true;
+  let aiHideTimer = null;
+  let aiSpeechToken = 0;
+  const voiceReady = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
 
   const BASE_SPEED = 7.0;
 
@@ -719,6 +787,7 @@
     arrived = false;
     progress = 0;
     routeToken++;
+    stopAIGuide();
     shell.classList.remove('playing');
     if (engine) engine.gain.gain.setTargetAtTime(0, engine.ctx.currentTime, 0.12);
     rideBtn.innerHTML = '<i class="fas fa-walking me-1"></i> Start Walk';
@@ -777,6 +846,7 @@
     }
     playing = true;
     follow = true;
+    if (aiVoiceOn) primeVoice();
     shell.classList.add('playing');
     rideBtn.innerHTML = '<i class="fas fa-pause me-1"></i> Pause ride';
     if (soundOn) startEngine();
@@ -784,25 +854,129 @@
     updateHud(performance.now(), true);
   }
 
-  const ARRIVAL_LINE = 'Hoy mango ari kana';
-  function speakArrival() {
-    if (!('speechSynthesis' in window)) return;
+  function floorSpeech(floor) {
+    const names = { 'G/F': 'the ground floor', '1F': 'the first floor', '2F': 'the second floor',
+      '3F': 'the third floor', '4F': 'the fourth floor' };
+    return names[floor] || (floor ? floor + ' floor' : 'the ground floor');
+  }
+
+  function bestVoice() {
+    if (!voiceReady) return null;
+    const voices = speechSynthesis.getVoices();
+    if (!voices.length) return null;
+    const usable = voices.filter(function (v) {
+      return /^(en|fil|tl)([-_]|$)/i.test(v.lang || '') || /filipino|tagalog/i.test(v.name || '');
+    });
+    if (!usable.length) return null;
+    function score(v) {
+      const lang = v.lang || '', name = v.name || '';
+      let s = 0;
+      if (/^en[-_]PH/i.test(lang)) s += 90;
+      if (/^(fil|tl)[-_]PH/i.test(lang) || /filipino|tagalog/i.test(name)) s += 70;
+      if (/^en[-_]US/i.test(lang)) s += 40;
+      if (/^en[-_]GB/i.test(lang)) s += 35;
+      if (/female|zira|samantha|aria|jenny|serena|karen|moira|michelle/i.test(name)) s += 20;
+      if (/natural|neural|premium|enhanced/i.test(name)) s += 12;
+      if (/google/i.test(name)) s += 8;
+      return s;
+    }
+    return usable.slice().sort(function (a, b) { return score(b) - score(a); })[0];
+  }
+
+  function primeVoice() {
+    if (!voiceReady) return;
     try {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(ARRIVAL_LINE);
-      const voices = speechSynthesis.getVoices();
-      const filipino = voices.find(function (x) {
-        return /^(fil|tl|ceb|war|hil)/i.test(x.lang) || /filipino|tagalog/i.test(x.name);
-      });
-      if (filipino) u.voice = filipino;
-      u.lang = filipino ? filipino.lang : 'fil-PH';
-      u.rate = 1.05;
-      u.pitch = 1.15;
-      u.volume = 1;
+      speechSynthesis.resume();
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
       speechSynthesis.speak(u);
     } catch (err) { }
   }
-  if ('speechSynthesis' in window) {
+
+  function hideAIGuide(delay) {
+    clearTimeout(aiHideTimer);
+    aiHideTimer = setTimeout(function () {
+      aiGuide.classList.remove('show', 'speaking');
+      aiStatus.textContent = 'ready';
+    }, delay == null ? 4800 : delay);
+  }
+
+  function stopAIGuide() {
+    clearTimeout(aiHideTimer);
+    aiSpeechToken++;
+    if (voiceReady) {
+      try { speechSynthesis.cancel(); } catch (err) { }
+    }
+    aiGuide.classList.remove('show', 'speaking');
+    aiStatus.textContent = 'ready';
+  }
+
+  function speakAIGuide(message, options) {
+    options = options || {};
+    aiText.textContent = message;
+    aiGuide.classList.add('show');
+    clearTimeout(aiHideTimer);
+    if (!aiVoiceOn) {
+      aiStatus.textContent = 'muted';
+      hideAIGuide(options.hold);
+      return;
+    }
+    if (!voiceReady) {
+      aiStatus.textContent = 'voice unavailable';
+      hideAIGuide(options.hold || 6500);
+      return;
+    }
+    try {
+      const token = ++aiSpeechToken;
+      speechSynthesis.cancel();
+      speechSynthesis.resume();
+      const u = new SpeechSynthesisUtterance(message);
+      const v = bestVoice();
+      if (v) { u.voice = v; u.lang = v.lang; }
+      else { u.lang = 'en-PH'; }
+      u.rate = options.rate || 0.98;
+      u.pitch = options.pitch || 1.03;
+      u.volume = 1;
+      u.onstart = function () {
+        if (token !== aiSpeechToken) return;
+        aiGuide.classList.add('speaking');
+        aiStatus.textContent = 'speaking…';
+      };
+      u.onend = function () {
+        if (token !== aiSpeechToken) return;
+        aiGuide.classList.remove('speaking');
+        aiStatus.textContent = 'done';
+        hideAIGuide(options.hold);
+      };
+      u.onerror = function () {
+        if (token !== aiSpeechToken) return;
+        aiGuide.classList.remove('speaking');
+        aiStatus.textContent = 'text only';
+        hideAIGuide(options.hold || 6500);
+      };
+      speechSynthesis.speak(u);
+    } catch (err) {
+      aiStatus.textContent = 'text only';
+      hideAIGuide(options.hold || 6500);
+    }
+  }
+
+  function arrivalSpeech() {
+    const b = currentBuilding();
+    const room = b.rooms.find(function (r) { return r.code === destRoom; }) || b.rooms[0];
+    const detail = room && room.detail ? room.detail.replace(/[.\s]+$/, '') : '';
+    let msg = 'You have arrived. This is ' + ((room && room.code) || destRoom) + ' in the ' + b.name +
+      ', on ' + floorSpeech(room ? room.floor : '') + '.';
+    if (detail) msg += ' ' + detail + '.';
+    msg += ' You made it. Good luck, and enjoy your class!';
+    return msg;
+  }
+
+  function speakArrival() {
+    speakAIGuide(arrivalSpeech());
+  }
+
+  if (voiceReady) {
     speechSynthesis.getVoices();
     speechSynthesis.onvoiceschanged = function () { speechSynthesis.getVoices(); };
   }
@@ -814,9 +988,6 @@
     speakArrival();
     rideBtn.innerHTML = '<i class="fas fa-rotate-right me-1"></i> Walk Again';
     if (engine) engine.gain.gain.setTargetAtTime(0, engine.ctx.currentTime, 0.2);
-    const b = currentBuilding();
-    const room = b.rooms.find(function (r) { return r.code === destRoom; });
-    showToast('Arrived: ' + destRoom + ' • ' + b.name + ' • ' + (room ? room.floor : ''), 5000);
     updateHud(performance.now(), true);
   }
 
@@ -893,10 +1064,10 @@
     sources: {
       satellite: {
         type: 'raster',
-        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
         tileSize: 256,
-        maxzoom: 18,
-        attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics'
+        maxzoom: 19,
+        attribution: 'Imagery &copy; Google'
       },
       streets: {
         type: 'raster',
@@ -915,13 +1086,15 @@
   map = new maplibregl.Map({
     container: 'ride-map',
     style: style,
-    center: [GATE[1], GATE[0]],
-    zoom: 18.1,
+    center: CAMPUS_CENTER,
+    zoom: 18.8,
     pitch: 58,
     bearing: 0,
     attributionControl: false,
     antialias: true,
-    maxPitch: 75
+    maxPitch: 75,
+    maxBounds: CAMPUS_BOUNDS,
+    minZoom: 18.4
   });
 
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
@@ -1186,11 +1359,35 @@
     soundBtn.innerHTML = soundOn ? '<i class="fas fa-volume-high"></i>' : '<i class="fas fa-volume-xmark"></i>';
     if (soundOn) {
       startEngine();
-      showToast('Engine sound on — vroom.', 1800);
+      showToast('Engine sound on - vroom.', 1800);
     } else if (engine) {
       engine.gain.gain.setTargetAtTime(0, engine.ctx.currentTime, 0.15);
     }
   });
+
+  aiBtn.addEventListener('click', function () {
+    aiVoiceOn = !aiVoiceOn;
+    aiBtn.classList.toggle('active', aiVoiceOn);
+    aiBtn.innerHTML = aiVoiceOn ? '<i class="fas fa-robot"></i> AI' : '<i class="fas fa-comment-slash"></i> AI';
+    aiBtn.title = aiVoiceOn ? 'AI voice guide: on' : 'AI voice guide: muted';
+    if (!voiceReady) {
+      showToast('AI voice is not supported here - showing text only.', 2600);
+    }
+    if (aiVoiceOn) {
+      primeVoice();
+      if (arrived) {
+        speakAIGuide(arrivalSpeech());
+      } else {
+        speakAIGuide('AI guide is on. I will tell you when you reach ' + (destRoom || 'your room') + '.', { hold: 3200 });
+      }
+      showToast('AI voice guide on', 1500);
+    } else {
+      stopAIGuide();
+      showToast('AI voice guide muted', 1500);
+    }
+  });
+
+  aiClose.addEventListener('click', stopAIGuide);
 
   map.on('click', function () {
     if (follow) return;

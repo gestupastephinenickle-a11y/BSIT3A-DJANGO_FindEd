@@ -50,6 +50,9 @@
   .subject-chip:hover, .subject-chip.sel { border-color:#ea580c; background:rgba(234,88,12,.08); }
   .subject-chip b { color:#ea580c; }
   .subject-chip span { color:var(--tblr-muted); }
+  .map-badge { position:absolute; z-index:5; left:10px; bottom:10px; background:rgba(12,14,19,.82);
+    color:#ffb35c; font-size:10px; font-weight:800; letter-spacing:.1em; padding:.3rem .55rem;
+    border-radius:999px; border:1px solid rgba(255,255,255,.16); pointer-events:none; }
 </style>
 
 <div class="finded-header mb-3">
@@ -102,10 +105,10 @@
     <div class="card">
       <div class="card-body p-2 p-md-3">
         <div class="photo-wrap">
-          <img src="{% static 'img/kcc-aerial.jpg' %}" alt="Real aerial photo of Kabankalan Catholic College"/>
-          <svg id="route-svg" viewBox="0 0 768 768" preserveAspectRatio="none"><polyline id="route-line" points=""/></svg>
+          <img src="{% static 'img/kcc-aerial-cropped.jpg' %}" alt="Aerial photo of Kabankalan Catholic College campus"/>
+          <svg id="route-svg" viewBox="0 0 1360 1000" preserveAspectRatio="none"><polyline id="route-line" points=""/></svg>
           <div id="pins"></div>
-          <div class="map-badge">● REAL PHOTO • KCC CAMPUS • GUANZON ST.</div>
+          <div class="map-badge">● KCC CAMPUS ONLY • GUANZON ST.</div>
         </div>
         <div class="d-flex flex-wrap gap-3 mt-2 small text-muted px-1">
           <span><span class="legend-dot" style="background:#2563eb"></span> Blue line = walk from Main Gate</span>
@@ -146,13 +149,16 @@
   const subjects = JSON.parse(document.getElementById('subject-data').textContent);
   const byId = Object.fromEntries(buildings.map(b=>[b.id,b]));
   // Real KCC anchor (OpenStreetMap): Guanzon St., Brgy. 1, Kabankalan City.
-  // Photo = 3x3 satellite tiles @z19, top-left tile (441005, 247508).
-  const Z=19, N=Math.pow(2,Z), X0=441005, Y0=247508, S=768;
+  // Cropped to show only the KCC campus.
+  // 2x the z19 tile grid so the photo stays sharp on high-DPI screens.
+  const Z=20, N=Math.pow(2,Z), X0=882010, Y0=495016;
+  const S_W=1360, S_H=1000, C_X=100, C_Y=360;
   function toXY(lat,lon){
     const x=(lon+180)/360*N;
     const lr=lat*Math.PI/180;
     const y=(1-Math.log(Math.tan(lr)+1/Math.cos(lr))/Math.PI)/2*N;
-    return [(x-X0)*256, (y-Y0)*256];
+    const px=(x-X0)*256, py=(y-Y0)*256;
+    return [px - C_X, py - C_Y];
   }
   const pins = {
     main:    { ll:[9.997740, 122.814635], label:"ADMIN" },
@@ -182,7 +188,7 @@
     const [x,y] = toXY(GATE[0], GATE[1]);
     const d = document.createElement('div');
     d.className = 'pin';
-    d.style.left = (x/S*100)+'%'; d.style.top = (y/S*100)+'%';
+    d.style.left = (x/S_W*100)+'%'; d.style.top = (y/S_H*100)+'%';
     d.innerHTML = `<span class="tag"><span class="kcc-you">YOU: MAIN GATE</span></span><span class="dot" style="background:#2563eb"></span>`;
     pinLayer.appendChild(d);
   }
@@ -191,7 +197,7 @@
     const [x,y] = toXY(pins[b.id].ll[0], pins[b.id].ll[1]);
     const d = document.createElement('div');
     d.className = 'pin'; d.title = b.name;
-    d.style.left = (x/S*100)+'%'; d.style.top = (y/S*100)+'%';
+    d.style.left = (x/S_W*100)+'%'; d.style.top = (y/S_H*100)+'%';
     d.innerHTML = `<span class="tag"><span class="kcc-pin t-${b.type}">${pins[b.id].label}</span></span><span class="dot"></span>`;
     d.addEventListener('click', ()=>render(b.id));
     pinLayer.appendChild(d);
@@ -209,8 +215,8 @@
     const off = subjectOffsets[i % subjectOffsets.length];
     const d = document.createElement('div');
     d.className = 'subject-pin';
-    d.style.left = (x/S*100)+'%';
-    d.style.top = (y/S*100)+'%';
+    d.style.left = (x/S_W*100)+'%';
+    d.style.top = (y/S_H*100)+'%';
     d.style.marginLeft = off[0]+'px';
     d.style.marginTop = off[1]+'px';
     const btn = document.createElement('button');
