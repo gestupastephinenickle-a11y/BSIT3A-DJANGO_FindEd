@@ -94,7 +94,7 @@
   <div class="card-body">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
       <h3 class="card-title mb-0"><i class="fas fa-walking me-1" style="color:#ea580c"></i> Subjects on the KCC map</h3>
-      <span class="text-muted small">Tap a subject to show your room</span>
+      <span class="text-muted small">Tap a subject to start walking guidance to its room</span>
     </div>
     <div class="d-flex flex-wrap gap-2" id="subject-chips"></div>
   </div>
@@ -244,11 +244,10 @@
   function selectSubject(code){
     const s = subjects.find(x => x.code === code);
     if(!s || !pins[s.building]) return;
-    const b = byId[s.building];
-    const room = b.rooms.find(r => r.code === s.room) ? s.room : b.rooms[0].code;
-    render(s.building, room);
-    document.querySelectorAll('.subject-chip').forEach(c => c.classList.toggle('sel', c.dataset.subject === code));
-    Object.keys(subjectPinEls).forEach(k => subjectPinEls[k].classList.toggle('sel', k === code));
+    const walkUrl = new URL("{% url 'ride' %}", window.location.href);
+    walkUrl.searchParams.set('subject', code);
+    walkUrl.searchParams.set('autostart', '1');
+    window.location.assign(walkUrl.toString());
   }
 
   function drawRoute(bid){

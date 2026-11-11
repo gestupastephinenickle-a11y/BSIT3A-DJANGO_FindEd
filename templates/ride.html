@@ -397,6 +397,7 @@
   const GATE = JSON.parse(document.getElementById('campus-gate').textContent);
   const SUBJECTS = JSON.parse(document.getElementById('campus-subjects').textContent);
   const SELECTED_SUBJECT = JSON.parse(document.getElementById('selected-subject').textContent);
+  const AUTO_START_WALK = new URLSearchParams(window.location.search).get('autostart') === '1';
 
   // Lock the walk map to the KCC campus only (Guanzon St., Kabankalan City).
   const CAMPUS_PAD = 0.0004;
@@ -459,6 +460,10 @@
   subjectPlaceholder.value = '';
   subjectPlaceholder.textContent = 'Choose a subject…';
   subjectSel.appendChild(subjectPlaceholder);
+  const allSubjectsOption = document.createElement('option');
+  allSubjectsOption.value = '__all__';
+  allSubjectsOption.textContent = 'All subjects — choose any room';
+  subjectSel.appendChild(allSubjectsOption);
   SUBJECTS.forEach(function (s) {
     const opt = document.createElement('option');
     opt.value = s.code;
@@ -969,6 +974,7 @@
       ', on ' + floorSpeech(room ? room.floor : '') + '.';
     if (detail) msg += ' ' + detail + '.';
     msg += ' You made it. Good luck, and enjoy your class!';
+    msg += ' Puli na, indi mag sulod si sir.';
     return msg;
   }
 
@@ -1213,7 +1219,16 @@
 
     positionDestMarker();
     updateLiveMarker();
-    buildRoutePreview();
+    const routePreview = buildRoutePreview();
+    if (AUTO_START_WALK && initialSubject) {
+      routePreview.then(function () {
+        if (route.length) {
+          toggleRide();
+        } else {
+          showToast('Unable to create a route for this subject.', 4200);
+        }
+      });
+    }
     startCameraIfNeeded();
   });
 
@@ -1280,7 +1295,7 @@
 
   /* ---------------- events ---------------- */
   subjectSel.addEventListener('change', function () {
-    if (subjectSel.value) {
+    if (SUBJECTS.some(function (s) { return s.code === subjectSel.value; })) {
       applySubject(subjectSel.value);
     } else {
       destBuilding = buildingSel.value;
