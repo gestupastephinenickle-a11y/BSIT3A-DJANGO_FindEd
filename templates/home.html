@@ -44,12 +44,7 @@
   .subject-pin { position:absolute; z-index:6; transform:translate(-50%,0); }
   .subject-pin button { border:1.5px solid #fff; background:#ea580c; color:#fff; font-size:9.5px; font-weight:800;
     border-radius:999px; padding:2px 6px; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,.45); line-height:1.2; }
-  .subject-pin button:hover, .subject-pin button.sel { background:#f8b84e; color:#111; }
-  .subject-chip { display:flex; align-items:center; gap:.4rem; background:var(--tblr-bg-surface); color:var(--tblr-body-color);
-    border:1px solid var(--tblr-border-color); border-radius:999px; padding:.3rem .7rem; font-size:.82rem; }
-  .subject-chip:hover, .subject-chip.sel { border-color:#ea580c; background:rgba(234,88,12,.08); }
-  .subject-chip b { color:#ea580c; }
-  .subject-chip span { color:var(--tblr-muted); }
+  .subject-pin button:hover { background:#f8b84e; color:#111; }
   .map-badge { position:absolute; z-index:5; left:10px; bottom:10px; background:rgba(12,14,19,.82);
     color:#ffb35c; font-size:10px; font-weight:800; letter-spacing:.1em; padding:.3rem .55rem;
     border-radius:999px; border:1px solid rgba(255,255,255,.16); pointer-events:none; }
@@ -86,17 +81,6 @@
       <button class="btn btn-sm btn-outline-primary" data-room="Grade 4-A">Grade 4-A</button>
       <button class="btn btn-sm btn-outline-primary" data-room="Main Sanctuary">Chapel</button>
     </div>
-  </div>
-</div>
-
-<!-- SUBJECTS ON THE MAP -->
-<div class="card mb-3">
-  <div class="card-body">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-      <h3 class="card-title mb-0"><i class="fas fa-walking me-1" style="color:#ea580c"></i> Subjects on the KCC map</h3>
-      <span class="text-muted small">Tap a subject to start walking guidance to its room</span>
-    </div>
-    <div class="d-flex flex-wrap gap-2" id="subject-chips"></div>
   </div>
 </div>
 
@@ -207,7 +191,6 @@
 
   // ---- every subject on the map ----
   const subjectOffsets = [[-108,16],[-72,38],[-36,16],[0,38],[36,16],[72,38],[108,16]];
-  const subjectPinEls = {};
   subjects.forEach((s, i) => {
     const pin = pins[s.building];
     if(!pin) return;
@@ -226,19 +209,6 @@
     btn.onclick = () => selectSubject(s.code);
     d.appendChild(btn);
     pinLayer.appendChild(d);
-    subjectPinEls[s.code] = btn;
-  });
-
-  const chipWrap = document.getElementById('subject-chips');
-  subjects.forEach(s => {
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'subject-chip';
-    chip.dataset.subject = s.code;
-    chip.innerHTML = `<b>${s.code}</b><span>${s.room}</span>`;
-    chip.title = s.title;
-    chip.onclick = () => selectSubject(s.code);
-    chipWrap.appendChild(chip);
   });
 
   function selectSubject(code){
@@ -272,8 +242,6 @@
   }
   function render(bid, roomCode){
     const b = byId[bid]; if(!b || !pins[bid]) return;
-    document.querySelectorAll('.subject-chip.sel').forEach(c=>c.classList.remove('sel'));
-    Object.values(subjectPinEls).forEach(p=>p.classList.remove('sel'));
     curRoom = b.rooms.find(r=>r.code===roomCode) || b.rooms[0];
     Object.keys(pinEls).forEach(id=>pinEls[id].classList.toggle('sel', id===bid));
     drawRoute(bid);

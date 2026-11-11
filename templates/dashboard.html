@@ -5,13 +5,10 @@
   .dash-wrap { color: #f5f4f0; max-width: 960px; margin: 0 auto; }
   .dash-wrap .text-muted { color: #b8b3a8 !important; }
   .hero { background: linear-gradient(135deg, #000 0%, #1c1410 55%, #ff7a00 170%); border: 1px solid #ff7a00; border-radius: 20px; padding: 2.5rem 1.5rem; text-align: center; box-shadow: 0 8px 32px rgba(255,122,0,.15); }
-  .hero h1 { color: #fff; font-weight: 800; font-size: clamp(1.8rem, 5vw, 2.6rem); margin-bottom: .25rem; }
-  .hero p { color: #d6cfc2; margin-bottom: 1.25rem; }
+  .hero h1 { color: #fff; font-weight: 800; font-size: 18pt; margin-bottom: .25rem; }
   .hero .form-control { background: #0b0b0d; border: 2px solid #3a332c; color: #fff; height: 60px; font-size: 1.1rem; border-radius: 14px 0 0 14px; }
   .hero .form-control:focus { border-color: #ff7a00; box-shadow: none; }
   .hero .btn-find { background: #ff7a00; color: #000; font-weight: 800; border-radius: 0 14px 14px 0; padding: 0 2rem; }
-  .chip { border: 1px solid #ff7a00; color: #ff9c3f; border-radius: 999px; padding: .25rem .9rem; font-size: .85rem; text-decoration: none; }
-  .chip:hover { background: #ff7a00; color: #000; }
   .dash-wrap .card { background: #141416; border: 1px solid #2a2520; color: #f5f4f0; border-radius: 16px; }
   .tile { background: #0b0b0d; border: 1px solid #3a332c; border-radius: 12px; padding: .9rem 1rem; height: 100%; }
   .tile .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #ff9c3f; font-weight: 700; }
@@ -32,20 +29,13 @@
   <!-- HERO SEARCH -->
   <div class="hero mb-3">
     <div class="small fw-bold mb-1" style="color:#ff9c3f;letter-spacing:.12em">FINDED • KCC</div>
-    <h1>Where is my classroom?</h1>
-    <p>Type a room (IT 2-101, LAB 6) or subject (IT302).</p>
+    <h1>WHERE IS MY CLASSROOM?</h1>
     <form method="get" action="{% url 'dashboard' %}" role="search">
       <div class="input-group mx-auto" style="max-width:640px">
-        <input name="q" type="text" class="form-control" placeholder="Try IT 2-101…" value="{{ q }}" autocomplete="off" aria-label="Search room or subject">
+        <input name="q" type="text" class="form-control" placeholder="Ask" value="{{ q }}" autocomplete="off" aria-label="Search room or subject">
         <button class="btn btn-find" type="submit">Find</button>
       </div>
     </form>
-    <div class="mt-3 d-flex flex-wrap gap-2 justify-content-center">
-      <a class="chip" href="{% url 'dashboard' %}?q=IT+2-101">IT 2-101</a>
-      <a class="chip" href="{% url 'dashboard' %}?q=LAB+6">LAB 6</a>
-      <a class="chip" href="{% url 'dashboard' %}?q=IT302">IT302</a>
-      <a class="chip" href="{% url 'dashboard' %}?q=CMAT+104">CMAT 104</a>
-    </div>
     <a href="{% url 'ride' %}" class="btn btn-primary mt-3"><i class="fas fa-walking me-1"></i> Walk to my classroom</a>
   </div>
 
